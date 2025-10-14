@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Lifestyle Tracker</title>
+    <title>Ben V3.0</title>
     <style>
         * {
             margin: 0;
@@ -54,6 +54,12 @@
             font-size: 1.5em;
             margin-bottom: 20px;
             color: #5fa887;
+        }
+
+        .card h3 {
+            font-size: 1.2em;
+            margin-bottom: 15px;
+            color: #7cb99c;
         }
 
         .stat-grid {
@@ -261,6 +267,39 @@
             grid-template-columns: 1fr 1fr;
             gap: 15px;
         }
+
+        .tomorrow-preview {
+            background: #fff8e1;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .tomorrow-preview h3 {
+            color: #f57c00;
+            margin-bottom: 10px;
+        }
+
+        .tomorrow-preview .plan-item {
+            padding: 8px 0;
+            color: #666;
+        }
+
+        .tomorrow-preview .plan-item strong {
+            color: #333;
+        }
+
+        .fast-reminder {
+            background: #ffebee;
+            border: 2px solid #ef5350;
+            border-radius: 10px;
+            padding: 12px;
+            margin-top: 10px;
+            text-align: center;
+            font-weight: 600;
+            color: #c62828;
+        }
     </style>
 </head>
 <body>
@@ -297,6 +336,13 @@
 
                 <button class="btn" onclick="saveToday()">💾 Save Today</button>
             </div>
+
+            <div class="card">
+                <div class="tomorrow-preview">
+                    <h3>🌅 Tomorrow's Plan</h3>
+                    <div id="tomorrowPlan"></div>
+                </div>
+            </div>
         </div>
 
         <!-- STATS VIEW -->
@@ -319,6 +365,10 @@
                     <div class="stat-box">
                         <div class="number" id="guitarCount">0</div>
                         <div class="label">Guitar Sessions</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="number" id="stepsCount">0</div>
+                        <div class="label">Step Goals Hit</div>
                     </div>
                 </div>
             </div>
@@ -727,9 +777,53 @@
             return today.toISOString().split('T')[0];
         }
 
-        function getDayOfWeek() {
+        function getTomorrowKey() {
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            return tomorrow.toISOString().split('T')[0];
+        }
+
+        function getDayOfWeek(dateKey = null) {
             const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+            if (dateKey) {
+                const date = new Date(dateKey + 'T00:00:00');
+                return days[date.getDay()];
+            }
             return days[new Date().getDay()];
+        }
+
+        function showTomorrowPlan() {
+            const tomorrowKey = getTomorrowKey();
+            const tomorrowDay = getDayOfWeek(tomorrowKey);
+            const plan = data.weeklyPlan[tomorrowDay];
+            const tomorrow = new Date(tomorrowKey + 'T00:00:00');
+            
+            const planDiv = document.getElementById('tomorrowPlan');
+            let html = `<div class="plan-item"><strong>${tomorrow.toLocaleDateString('en-GB', { weekday: 'long', month: 'short', day: 'numeric' })}</strong></div>`;
+            
+            if (plan.workout !== 'Rest') {
+                html += `<div class="plan-item">💪 Workout: ${plan.workout}</div>`;
+                if (plan.workout === 'Strength Training' && plan.exercises.length > 0) {
+                    html += `<div class="plan-item" style="font-size: 0.9em; padding-left: 20px;">`;
+                    plan.exercises.forEach(ex => {
+                        html += `• ${ex}<br>`;
+                    });
+                    html += `</div>`;
+                }
+            } else {
+                html += `<div class="plan-item">😌 Rest Day</div>`;
+            }
+            
+            if (plan.fasting) {
+                html += `<div class="plan-item">⏱️ Fasting Day</div>`;
+                html += `<div class="fast-reminder">⚠️ Start fasting at 8pm tonight!</div>`;
+            }
+            
+            if (plan.guitar) {
+                html += `<div class="plan-item">🎸 Guitar Practice (20 min)</div>`;
+            }
+            
+            planDiv.innerHTML = html;
         }
 
         function initTodayCheckboxes() {
@@ -741,6 +835,7 @@
                 fasted: false,
                 workedOut: false,
                 guitarPractice: false,
+                stepsTarget: false,
                 alcoholFree: false,
                 nicotineFree: false,
                 weight: null,
@@ -752,6 +847,7 @@
 
             const items = [
                 { id: 'ateHealthy', label: 'Ate Healthy', icon: '🥗', show: true },
+                { id: 'stepsTarget', label: 'Daily Step Target Reached', icon: '👟', show: true },
                 { id: 'fasted', label: 'Fasted', icon: '⏱️', show: plan.fasting },
                 { id: 'workedOut', label: plan.workout === 'Strength Training' && plan.exercises.length > 0 ? 'Workout Complete' : `Worked Out (${plan.workout})`, icon: '💪', show: plan.workout !== 'Rest' },
                 { id: 'guitarPractice', label: 'Guitar Practice (20min)', icon: '🎸', show: plan.guitar }
@@ -800,6 +896,8 @@
             if (log.bodyFat) {
                 document.getElementById('todayBodyFat').value = log.bodyFat;
             }
+
+            showTomorrowPlan();
         }
 
         function initPersonalView() {
@@ -862,7 +960,6 @@
         function updateRecoveryStats() {
             let totalMoney = 0;
             
-            // Calculate separate streaks for alcohol and nicotine
             let alcoholStreak = 0;
             let nicotineStreak = 0;
             let longestAlcoholStreak = 0;
@@ -922,6 +1019,7 @@
             const log = data.dailyLogs[todayKey] || {};
 
             log.ateHealthy = document.getElementById('ateHealthy')?.checked || false;
+            log.stepsTarget = document.getElementById('stepsTarget')?.checked || false;
             log.fasted = document.getElementById('fasted')?.checked || false;
             log.workedOut = document.getElementById('workedOut')?.checked || false;
             log.guitarPractice = document.getElementById('guitarPractice')?.checked || false;
@@ -952,6 +1050,7 @@
             let workoutCount = 0;
             let fastingCount = 0;
             let guitarCount = 0;
+            let stepsCount = 0;
             let weights = [];
             let bodyFats = [];
 
@@ -962,6 +1061,7 @@
                 if (log.workedOut) workoutCount++;
                 if (log.fasted) fastingCount++;
                 if (log.guitarPractice) guitarCount++;
+                if (log.stepsTarget) stepsCount++;
                 if (log.weight) weights.push(parseFloat(log.weight));
                 if (log.bodyFat) bodyFats.push(parseFloat(log.bodyFat));
             });
@@ -970,6 +1070,7 @@
             document.getElementById('workoutCount').textContent = workoutCount;
             document.getElementById('fastingCount').textContent = fastingCount;
             document.getElementById('guitarCount').textContent = guitarCount;
+            document.getElementById('stepsCount').textContent = stepsCount;
 
             if (weights.length > 0) {
                 const currentWeight = weights[weights.length - 1];
@@ -989,10 +1090,10 @@
                 document.getElementById('bodyFatChange').textContent = (change >= 0 ? '+' : '') + change.toFixed(1) + '%';
             }
 
-            updateMilestones(workoutCount, fastingCount, guitarCount);
+            updateMilestones(workoutCount, fastingCount, guitarCount, stepsCount);
         }
 
-        function updateMilestones(workoutCount, fastingCount, guitarCount) {
+        function updateMilestones(workoutCount, fastingCount, guitarCount, stepsCount) {
             const milestones = [
                 { title: '10 Workouts', target: 10, current: workoutCount, type: 'workouts' },
                 { title: '25 Workouts', target: 25, current: workoutCount, type: 'workouts' },
@@ -1000,7 +1101,9 @@
                 { title: '10 Fasts', target: 10, current: fastingCount, type: 'fasts' },
                 { title: '25 Fasts', target: 25, current: fastingCount, type: 'fasts' },
                 { title: '20 Guitar Sessions', target: 20, current: guitarCount, type: 'guitar' },
-                { title: '50 Guitar Sessions', target: 50, current: guitarCount, type: 'guitar' }
+                { title: '50 Guitar Sessions', target: 50, current: guitarCount, type: 'guitar' },
+                { title: '30 Step Goals', target: 30, current: stepsCount, type: 'steps' },
+                { title: '100 Step Goals', target: 100, current: stepsCount, type: 'steps' }
             ];
 
             const list = document.getElementById('milestonesList');
@@ -1021,7 +1124,6 @@
         }
 
         function showMotivation(type) {
-            // Get current streak for this type
             let currentStreak = 0;
             let streakActive = true;
             const dates = Object.keys(data.dailyLogs).sort().reverse();
@@ -1037,7 +1139,6 @@
                 }
             });
 
-            // Determine which time period
             let period;
             if (currentStreak <= 3) period = 'days_1_3';
             else if (currentStreak <= 7) period = 'days_4_7';
@@ -1045,10 +1146,8 @@
             else if (currentStreak <= 30) period = 'week_3_4';
             else period = 'month_plus';
 
-            // Get affirmations for this period
             const affirmations = data.affirmations[type][period];
             
-            // Build message
             const title = type === 'alcohol' ? '🍷 ALCOHOL URGES' : '🚬 NICOTINE URGES';
             let msg = `${title}\n\n`;
             msg += `You're on DAY ${currentStreak}\n\n`;
@@ -1058,13 +1157,11 @@
                 msg += `${i + 1}. ${aff}\n\n`;
             });
             
-            // Add general reasons
             msg += `📖 YOUR PERSONAL REASONS:\n\n`;
             data.reasons.forEach((r, i) => {
                 msg += `• ${r}\n`;
             });
             
-            // Add stats
             const totalMoney = parseFloat(document.getElementById('totalMoneySaved').textContent.replace('£', ''));
             const streakEl = type === 'alcohol' ? 'alcoholStreak' : 'nicotineStreak';
             const streak = parseInt(document.getElementById(streakEl).textContent);
@@ -1262,7 +1359,6 @@
             const periodKey = period.replace(/_/g, '').replace(/\d/g, '').charAt(0).toUpperCase() + period.replace(/_/g, '').replace(/\d/g, '').slice(1).replace('days', 'Days').replace('week', 'Week').replace('month', 'Month').replace('plus', 'Plus');
             let inputId = `newAff${type.charAt(0).toUpperCase() + type.slice(1)}${periodKey}`;
             
-            // Build correct input ID
             if (period === 'days_1_3') inputId = `newAff${type.charAt(0).toUpperCase() + type.slice(1)}Days13`;
             else if (period === 'days_4_7') inputId = `newAff${type.charAt(0).toUpperCase() + type.slice(1)}Days47`;
             else if (period === 'week_2') inputId = `newAff${type.charAt(0).toUpperCase() + type.slice(1)}Week2`;
