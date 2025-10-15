@@ -15,7 +15,7 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #a8e6cf 0%, #dcedc1 100%);
+            background: #1a2332;
             min-height: 100vh;
             padding: 20px;
             color: #333;
@@ -53,13 +53,13 @@
         .card h2 {
             font-size: 1.5em;
             margin-bottom: 20px;
-            color: #5fa887;
+            color: #2c5282;
         }
 
         .card h3 {
             font-size: 1.2em;
             margin-bottom: 15px;
-            color: #7cb99c;
+            color: #3182ce;
         }
 
         .stat-grid {
@@ -70,7 +70,7 @@
         }
 
         .stat-box {
-            background: linear-gradient(135deg, #a8e6cf 0%, #dcedc1 100%);
+            background: #2c5282;
             color: white;
             padding: 20px;
             border-radius: 15px;
@@ -152,25 +152,26 @@
 
         .input-group input:focus, .input-group select:focus {
             outline: none;
-            border-color: #a8e6cf;
+            border-color: #2c5282;
         }
 
         .btn {
             width: 100%;
             padding: 15px;
-            background: linear-gradient(135deg, #a8e6cf 0%, #88d8b0 100%);
+            background: #2c5282;
             color: white;
             border: none;
             border-radius: 10px;
             font-size: 1.1em;
             font-weight: 600;
             cursor: pointer;
-            transition: transform 0.2s;
+            transition: transform 0.2s, background 0.2s;
             margin-top: 10px;
         }
 
         .btn:hover {
             transform: translateY(-2px);
+            background: #2a4365;
         }
 
         .btn:active {
@@ -178,11 +179,19 @@
         }
 
         .btn-secondary {
-            background: linear-gradient(135deg, #ffc3a0 0%, #ffafbd 100%);
+            background: #e53e3e;
+        }
+
+        .btn-secondary:hover {
+            background: #c53030;
         }
 
         .btn-success {
-            background: linear-gradient(135deg, #a8d8ea 0%, #aa96da 100%);
+            background: #3182ce;
+        }
+
+        .btn-success:hover {
+            background: #2c5282;
         }
 
         .nav {
@@ -199,13 +208,13 @@
             border-radius: 10px;
             cursor: pointer;
             font-weight: 600;
-            color: #5fa887;
+            color: #2c5282;
             transition: all 0.3s;
             font-size: 0.9em;
         }
 
         .nav button.active {
-            background: linear-gradient(135deg, #a8e6cf 0%, #88d8b0 100%);
+            background: #2c5282;
             color: white;
         }
 
@@ -222,7 +231,7 @@
             background: #f8f9fa;
             border-radius: 10px;
             margin-bottom: 10px;
-            border-left: 4px solid #a8e6cf;
+            border-left: 4px solid #2c5282;
         }
 
         .planning-day {
@@ -235,12 +244,12 @@
         .planning-day strong {
             display: block;
             margin-bottom: 10px;
-            color: #5fa887;
+            color: #2c5282;
         }
 
         .milestone-box {
             padding: 15px;
-            background: linear-gradient(135deg, #ffc3a0 0%, #ffafbd 100%);
+            background: #3182ce;
             color: white;
             border-radius: 10px;
             margin-bottom: 10px;
@@ -248,7 +257,7 @@
         }
 
         .milestone-box.achieved {
-            background: linear-gradient(135deg, #a8d8ea 0%, #aa96da 100%);
+            background: #2c5282;
         }
 
         .milestone-box .title {
@@ -300,12 +309,28 @@
             font-weight: 600;
             color: #c62828;
         }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 8px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 4px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: white;
+            transition: width 0.3s;
+            border-radius: 4px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>💪 Ben V3.0</h1>
+            <h1>Ben V3.0</h1>
             <div class="date" id="currentDate"></div>
         </div>
 
@@ -348,7 +373,36 @@
         <!-- STATS VIEW -->
         <div id="statsView" class="hidden">
             <div class="card">
-                <h2>📊 Health Progress</h2>
+                <h2>📊 This Week's Progress</h2>
+                <div id="weeklyProgress"></div>
+            </div>
+
+            <div class="card">
+                <h2>📈 Body Metrics</h2>
+                <div class="stat-grid">
+                    <div class="stat-box">
+                        <div class="number" id="currentWeight">--</div>
+                        <div class="label">Current Weight (lbs)</div>
+                        <div class="label" id="weightGoalText" style="font-size: 0.8em; margin-top: 5px; opacity: 0.8;"></div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="number" id="currentBodyFat">--</div>
+                        <div class="label">Body Fat %</div>
+                        <div class="label" id="bodyFatGoalText" style="font-size: 0.8em; margin-top: 5px; opacity: 0.8;"></div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="number" id="weightChange">--</div>
+                        <div class="label">Weight Change (lbs)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="number" id="bodyFatChange">--</div>
+                        <div class="label">BF% Change</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>📊 All-Time Stats</h2>
                 <div class="stat-grid">
                     <div class="stat-box">
                         <div class="number" id="healthyDays">0</div>
@@ -369,28 +423,6 @@
                     <div class="stat-box">
                         <div class="number" id="stepsCount">0</div>
                         <div class="label">Step Goals Hit</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card">
-                <h2>📈 Body Metrics</h2>
-                <div class="stat-grid">
-                    <div class="stat-box">
-                        <div class="number" id="currentWeight">--</div>
-                        <div class="label">Current Weight (lbs)</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="number" id="currentBodyFat">--</div>
-                        <div class="label">Body Fat %</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="number" id="weightChange">--</div>
-                        <div class="label">Weight Change (lbs)</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="number" id="bodyFatChange">--</div>
-                        <div class="label">BF% Change</div>
                     </div>
                 </div>
             </div>
@@ -475,6 +507,47 @@
         <!-- SETTINGS VIEW -->
         <div id="settingsView" class="hidden">
             <div class="card">
+                <h2>🎯 Your Goals</h2>
+                
+                <div class="input-group">
+                    <label>Target Weight (lbs)</label>
+                    <input type="number" id="goalWeight" step="0.1" placeholder="Leave blank if no goal">
+                </div>
+
+                <div class="input-group">
+                    <label>Target Body Fat %</label>
+                    <input type="number" id="goalBodyFat" step="0.1" placeholder="Leave blank if no goal">
+                </div>
+
+                <div class="input-group">
+                    <label>Guitar Sessions Per Week</label>
+                    <input type="number" id="goalGuitar" value="3" min="0" max="7">
+                </div>
+
+                <div class="input-group">
+                    <label>Strength Training Per Week</label>
+                    <input type="number" id="goalStrength" value="3" min="0" max="7">
+                </div>
+
+                <div class="input-group">
+                    <label>Total Workouts Per Week</label>
+                    <input type="number" id="goalWorkouts" value="4" min="0" max="7">
+                </div>
+
+                <div class="input-group">
+                    <label>Fasting Days Per Week</label>
+                    <input type="number" id="goalFasting" value="2" min="0" max="7">
+                </div>
+
+                <div class="input-group">
+                    <label>Step Goal Days Per Week</label>
+                    <input type="number" id="goalSteps" value="5" min="0" max="7">
+                </div>
+
+                <button class="btn" onclick="saveGoals()">💾 Save Goals</button>
+            </div>
+
+            <div class="card">
                 <h2>💰 Recovery Costs</h2>
                 
                 <div class="input-group">
@@ -507,7 +580,7 @@
                 <p style="margin-bottom: 15px; color: #6c757d;">Different messages for different stages</p>
                 
                 <div style="margin-bottom: 20px;">
-                    <strong style="color: #5fa887; display: block; margin-bottom: 10px;">Days 1-3 (Hardest Days):</strong>
+                    <strong style="color: #2c5282; display: block; margin-bottom: 10px;">Days 1-3 (Hardest Days):</strong>
                     <div class="input-group">
                         <input type="text" id="newAffAlcoholDays13" placeholder="Affirmation for early days">
                     </div>
@@ -516,7 +589,7 @@
                 </div>
 
                 <div style="margin-bottom: 20px;">
-                    <strong style="color: #5fa887; display: block; margin-bottom: 10px;">Days 4-7 (First Week):</strong>
+                    <strong style="color: #2c5282; display: block; margin-bottom: 10px;">Days 4-7 (First Week):</strong>
                     <div class="input-group">
                         <input type="text" id="newAffAlcoholDays47" placeholder="Affirmation for first week">
                     </div>
@@ -525,7 +598,7 @@
                 </div>
 
                 <div style="margin-bottom: 20px;">
-                    <strong style="color: #5fa887; display: block; margin-bottom: 10px;">Week 2 (Building Momentum):</strong>
+                    <strong style="color: #2c5282; display: block; margin-bottom: 10px;">Week 2 (Building Momentum):</strong>
                     <div class="input-group">
                         <input type="text" id="newAffAlcoholWeek2" placeholder="Affirmation for week 2">
                     </div>
@@ -534,7 +607,7 @@
                 </div>
 
                 <div style="margin-bottom: 20px;">
-                    <strong style="color: #5fa887; display: block; margin-bottom: 10px;">Weeks 3-4 (One Month):</strong>
+                    <strong style="color: #2c5282; display: block; margin-bottom: 10px;">Weeks 3-4 (One Month):</strong>
                     <div class="input-group">
                         <input type="text" id="newAffAlcoholWeek34" placeholder="Affirmation for approaching 1 month">
                     </div>
@@ -543,7 +616,7 @@
                 </div>
 
                 <div style="margin-bottom: 20px;">
-                    <strong style="color: #5fa887; display: block; margin-bottom: 10px;">Month+ (Long-term):</strong>
+                    <strong style="color: #5599cc; display: block; margin-bottom: 10px;">Month+ (Long-term):</strong>
                     <div class="input-group">
                         <input type="text" id="newAffAlcoholMonthPlus" placeholder="Affirmation for long-term recovery">
                     </div>
@@ -607,7 +680,7 @@
                 <p style="margin-bottom: 15px; color: #6c757d;">Customize your exercise options</p>
                 
                 <div style="margin-bottom: 20px;">
-                    <strong style="color: #5fa887; display: block; margin-bottom: 10px;">Core/Abs Exercises:</strong>
+                    <strong style="color: #2c5282; display: block; margin-bottom: 10px;">Core/Abs Exercises:</strong>
                     <div class="input-group">
                         <input type="text" id="newExerciseCore" placeholder="e.g., Plank - 60s x 3">
                     </div>
@@ -616,7 +689,7 @@
                 </div>
 
                 <div style="margin-bottom: 20px;">
-                    <strong style="color: #5fa887; display: block; margin-bottom: 10px;">Chest Exercises:</strong>
+                    <strong style="color: #2c5282; display: block; margin-bottom: 10px;">Chest Exercises:</strong>
                     <div class="input-group">
                         <input type="text" id="newExerciseChest" placeholder="e.g., Dumbbell Press - 15 x 3">
                     </div>
@@ -625,7 +698,7 @@
                 </div>
 
                 <div style="margin-bottom: 20px;">
-                    <strong style="color: #5fa887; display: block; margin-bottom: 10px;">Compound/Full Body:</strong>
+                    <strong style="color: #2c5282; display: block; margin-bottom: 10px;">Compound/Full Body:</strong>
                     <div class="input-group">
                         <input type="text" id="newExerciseCompound" placeholder="e.g., Burpees - 15 x 3">
                     </div>
@@ -645,6 +718,15 @@
             settings: {
                 alcoholCost: 10,
                 nicotineCost: 5
+            },
+            goals: {
+                targetWeight: null,
+                targetBodyFat: null,
+                guitarPerWeek: 3,
+                strengthPerWeek: 3,
+                workoutsPerWeek: 4,
+                fastingPerWeek: 2,
+                stepsPerWeek: 5
             },
             reasons: [
                 "I want to be healthier and live longer",
@@ -754,9 +836,10 @@
                 data = {
                     ...data,
                     ...loadedData,
-                    exerciseLibrary: data.exerciseLibrary,
+                    exerciseLibrary: loadedData.exerciseLibrary || data.exerciseLibrary,
                     affirmations: loadedData.affirmations || data.affirmations,
-                    weeklyPlan: loadedData.weeklyPlan || data.weeklyPlan
+                    weeklyPlan: loadedData.weeklyPlan || data.weeklyPlan,
+                    goals: loadedData.goals || data.goals
                 };
                 
                 Object.keys(data.weeklyPlan).forEach(day => {
@@ -882,7 +965,7 @@
                 exerciseDiv.style.background = '#f8f9fa';
                 exerciseDiv.style.borderRadius = '10px';
                 exerciseDiv.innerHTML = `
-                    <strong style="color: #5fa887; margin-bottom: 10px; display: block;">💪 Today's Exercises:</strong>
+                    <strong style="color: #2c5282; margin-bottom: 10px; display: block;">💪 Today's Exercises:</strong>
                     <ul style="margin: 0; padding-left: 20px;">
                         ${plan.exercises.map(ex => `<li style="margin-bottom: 5px;">${ex}</li>`).join('')}
                     </ul>
@@ -1054,8 +1137,21 @@
             let weights = [];
             let bodyFats = [];
 
+            // This week's counts
+            let thisWeekWorkouts = 0;
+            let thisWeekStrength = 0;
+            let thisWeekGuitar = 0;
+            let thisWeekFasting = 0;
+            let thisWeekSteps = 0;
+
+            const today = new Date();
+            const startOfWeek = new Date(today);
+            startOfWeek.setDate(today.getDate() - today.getDay()); // Sunday
+            startOfWeek.setHours(0, 0, 0, 0);
+
             Object.keys(data.dailyLogs).sort().forEach(date => {
                 const log = data.dailyLogs[date];
+                const logDate = new Date(date + 'T00:00:00');
                 
                 if (log.ateHealthy) healthyDays++;
                 if (log.workedOut) workoutCount++;
@@ -1064,6 +1160,21 @@
                 if (log.stepsTarget) stepsCount++;
                 if (log.weight) weights.push(parseFloat(log.weight));
                 if (log.bodyFat) bodyFats.push(parseFloat(log.bodyFat));
+
+                // Count this week
+                if (logDate >= startOfWeek) {
+                    if (log.workedOut) {
+                        thisWeekWorkouts++;
+                        const dayOfWeek = getDayOfWeek(date);
+                        const plan = data.weeklyPlan[dayOfWeek];
+                        if (plan && plan.workout === 'Strength Training') {
+                            thisWeekStrength++;
+                        }
+                    }
+                    if (log.guitarPractice) thisWeekGuitar++;
+                    if (log.fasted) thisWeekFasting++;
+                    if (log.stepsTarget) thisWeekSteps++;
+                }
             });
 
             document.getElementById('healthyDays').textContent = healthyDays;
@@ -1072,6 +1183,10 @@
             document.getElementById('guitarCount').textContent = guitarCount;
             document.getElementById('stepsCount').textContent = stepsCount;
 
+            // Update weekly progress
+            updateWeeklyProgress(thisWeekWorkouts, thisWeekStrength, thisWeekGuitar, thisWeekFasting, thisWeekSteps);
+
+            // Body metrics with goals
             if (weights.length > 0) {
                 const currentWeight = weights[weights.length - 1];
                 const startWeight = weights[0];
@@ -1079,6 +1194,14 @@
                 
                 document.getElementById('currentWeight').textContent = currentWeight.toFixed(1);
                 document.getElementById('weightChange').textContent = (change >= 0 ? '+' : '') + change.toFixed(1);
+
+                const goalWeightEl = document.getElementById('weightGoalText');
+                if (data.goals.targetWeight) {
+                    const remaining = data.goals.targetWeight - currentWeight;
+                    goalWeightEl.textContent = `Goal: ${data.goals.targetWeight} lbs (${remaining >= 0 ? '+' : ''}${remaining.toFixed(1)} to go)`;
+                } else {
+                    goalWeightEl.textContent = '';
+                }
             }
 
             if (bodyFats.length > 0) {
@@ -1088,9 +1211,49 @@
                 
                 document.getElementById('currentBodyFat').textContent = currentBF.toFixed(1) + '%';
                 document.getElementById('bodyFatChange').textContent = (change >= 0 ? '+' : '') + change.toFixed(1) + '%';
+
+                const goalBFEl = document.getElementById('bodyFatGoalText');
+                if (data.goals.targetBodyFat) {
+                    const remaining = data.goals.targetBodyFat - currentBF;
+                    goalBFEl.textContent = `Goal: ${data.goals.targetBodyFat}% (${remaining >= 0 ? '+' : ''}${remaining.toFixed(1)}% to go)`;
+                } else {
+                    goalBFEl.textContent = '';
+                }
             }
 
             updateMilestones(workoutCount, fastingCount, guitarCount, stepsCount);
+        }
+
+        function updateWeeklyProgress(workouts, strength, guitar, fasting, steps) {
+            const progressDiv = document.getElementById('weeklyProgress');
+            
+            const items = [
+                { label: 'Total Workouts', current: workouts, goal: data.goals.workoutsPerWeek, icon: '💪' },
+                { label: 'Strength Training', current: strength, goal: data.goals.strengthPerWeek, icon: '🏋️' },
+                { label: 'Guitar Sessions', current: guitar, goal: data.goals.guitarPerWeek, icon: '🎸' },
+                { label: 'Fasting Days', current: fasting, goal: data.goals.fastingPerWeek, icon: '⏱️' },
+                { label: 'Step Goals', current: steps, goal: data.goals.stepsPerWeek, icon: '👟' }
+            ];
+
+            let html = '<div class="stat-grid">';
+            items.forEach(item => {
+                const percent = item.goal > 0 ? Math.min(100, (item.current / item.goal) * 100) : 0;
+                const status = item.current >= item.goal ? '✅' : item.current > 0 ? '🔄' : '⏳';
+                
+                html += `
+                    <div class="stat-box">
+                        <div class="number">${item.current}/${item.goal}</div>
+                        <div class="label">${item.icon} ${item.label}</div>
+                        <div style="width: 100%; height: 8px; background: rgba(255,255,255,0.3); border-radius: 4px; margin-top: 10px; overflow: hidden;">
+                            <div style="width: ${percent}%; height: 100%; background: white; transition: width 0.3s;"></div>
+                        </div>
+                        <div style="margin-top: 5px; font-size: 0.9em;">${status} ${Math.round(percent)}%</div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            
+            progressDiv.innerHTML = html;
         }
 
         function updateMilestones(workoutCount, fastingCount, guitarCount, stepsCount) {
@@ -1190,7 +1353,7 @@
                 if (dayData.workout === 'Strength Training') {
                     exercisesHTML = `
                         <div style="margin-top: 15px; padding: 15px; background: white; border-radius: 10px;">
-                            <strong style="color: #5fa887; margin-bottom: 10px; display: block;">Pick 4-5 Exercises:</strong>
+                            <strong style="color: #2c5282; margin-bottom: 10px; display: block;">Pick 4-5 Exercises:</strong>
                             <div style="margin-bottom: 10px;">
                                 <strong style="font-size: 0.9em; color: #6c757d;">Core/Abs:</strong>
                                 <div id="exercises-${day}-core" style="margin-top: 5px;"></div>
@@ -1258,7 +1421,7 @@
             if (workout === 'Strength Training') {
                 let exercisesHTML = `
                     <div style="margin-top: 15px; padding: 15px; background: white; border-radius: 10px;">
-                        <strong style="color: #5fa887; margin-bottom: 10px; display: block;">Pick 4-5 Exercises:</strong>
+                        <strong style="color: #2c5282; margin-bottom: 10px; display: block;">Pick 4-5 Exercises:</strong>
                         <div style="margin-bottom: 10px;">
                             <strong style="font-size: 0.9em; color: #6c757d;">Core/Abs:</strong>
                             <div id="exercises-${day}-core" style="margin-top: 5px;"></div>
@@ -1315,6 +1478,19 @@
             });
             saveData();
             alert('✅ Weekly plan saved!');
+        }
+
+        function saveGoals() {
+            data.goals.targetWeight = parseFloat(document.getElementById('goalWeight').value) || null;
+            data.goals.targetBodyFat = parseFloat(document.getElementById('goalBodyFat').value) || null;
+            data.goals.guitarPerWeek = parseInt(document.getElementById('goalGuitar').value);
+            data.goals.strengthPerWeek = parseInt(document.getElementById('goalStrength').value);
+            data.goals.workoutsPerWeek = parseInt(document.getElementById('goalWorkouts').value);
+            data.goals.fastingPerWeek = parseInt(document.getElementById('goalFasting').value);
+            data.goals.stepsPerWeek = parseInt(document.getElementById('goalSteps').value);
+            saveData();
+            alert('✅ Goals saved!');
+            updateStats();
         }
 
         function saveSettings() {
@@ -1469,6 +1645,13 @@
             if (view === 'settings') {
                 document.getElementById('alcoholCost').value = data.settings.alcoholCost;
                 document.getElementById('nicotineCost').value = data.settings.nicotineCost;
+                document.getElementById('goalWeight').value = data.goals.targetWeight || '';
+                document.getElementById('goalBodyFat').value = data.goals.targetBodyFat || '';
+                document.getElementById('goalGuitar').value = data.goals.guitarPerWeek;
+                document.getElementById('goalStrength').value = data.goals.strengthPerWeek;
+                document.getElementById('goalWorkouts').value = data.goals.workoutsPerWeek;
+                document.getElementById('goalFasting').value = data.goals.fastingPerWeek;
+                document.getElementById('goalSteps').value = data.goals.stepsPerWeek;
                 updateReasonsList();
                 updateExerciseLists();
                 updateAffirmationLists();
