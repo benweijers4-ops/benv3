@@ -1122,6 +1122,8 @@
 
         function saveToday() {
             const todayKey = getTodayKey();
+            const dayOfWeek = getDayOfWeek();
+            const plan = data.weeklyPlan[dayOfWeek];
             const log = data.dailyLogs[todayKey] || {};
 
             log.ateHealthy = document.getElementById('ateHealthy')?.checked || false;
@@ -1131,6 +1133,11 @@
             log.guitarPractice = document.getElementById('guitarPractice')?.checked || false;
             log.weight = document.getElementById('todayWeight').value || null;
             log.bodyFat = document.getElementById('todayBodyFat').value || null;
+            
+            // Save a snapshot of what was planned for this day
+            log.plannedWorkout = plan.workout;
+            log.plannedGuitar = plan.guitar;
+            log.plannedFasting = plan.fasting;
 
             data.dailyLogs[todayKey] = log;
             saveData();
@@ -1283,9 +1290,27 @@
             }
             
             // Count only days that have passed (NOT including today)
+            // Use the saved plan from logs if available, otherwise fall back to current plan
             for (let i = 0; i < daysPassed; i++) {
+                const currentDate = new Date(startOfWeek);
+                currentDate.setDate(startOfWeek.getDate() + i);
+                const dateKey = currentDate.toISOString().split('T')[0];
                 const dayName = days[i];
-                const plan = data.weeklyPlan[dayName];
+                const log = data.dailyLogs[dateKey];
+                
+                // Use saved plan from log if available, otherwise use current plan as fallback
+                let plan;
+                if (log && log.plannedWorkout !== undefined) {
+                    // Use the saved snapshot
+                    plan = {
+                        workout: log.plannedWorkout,
+                        guitar: log.plannedGuitar,
+                        fasting: log.plannedFasting
+                    };
+                } else {
+                    // Fallback to current plan (for backward compatibility with old logs)
+                    plan = data.weeklyPlan[dayName];
+                }
                 
                 // Always count eating healthy and steps for each day
                 plannedSteps++; // Each day has step goal
@@ -1318,8 +1343,19 @@
                 currentDate.setDate(startOfWeek.getDate() + i);
                 const dateKey = currentDate.toISOString().split('T')[0];
                 const dayName = days[i];
-                const plan = data.weeklyPlan[dayName];
                 const log = data.dailyLogs[dateKey] || {};
+                
+                // Use saved plan from log if available, otherwise use current plan as fallback
+                let plan;
+                if (log.plannedWorkout !== undefined) {
+                    plan = {
+                        workout: log.plannedWorkout,
+                        guitar: log.plannedGuitar,
+                        fasting: log.plannedFasting
+                    };
+                } else {
+                    plan = data.weeklyPlan[dayName];
+                }
                 
                 // Always have eating healthy and steps
                 totalPlannedGoals += 2;
@@ -1768,7 +1804,18 @@
             Object.keys(data.dailyLogs).sort().forEach(dateKey => {
                 const log = data.dailyLogs[dateKey];
                 const dayOfWeek = getDayOfWeek(dateKey);
-                const plan = data.weeklyPlan[dayOfWeek];
+                
+                // Use saved plan from log if available, otherwise use current plan as fallback
+                let plan;
+                if (log.plannedWorkout !== undefined) {
+                    plan = {
+                        workout: log.plannedWorkout,
+                        guitar: log.plannedGuitar,
+                        fasting: log.plannedFasting
+                    };
+                } else {
+                    plan = data.weeklyPlan[dayOfWeek];
+                }
                 
                 let totalGoals = 2; // Always have ateHealthy and stepsTarget
                 let completedGoals = 0;
