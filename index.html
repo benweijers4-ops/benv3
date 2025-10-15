@@ -548,19 +548,35 @@
             </div>
 
             <div class="card">
-                <h2>💰 Recovery Costs</h2>
+                <h2>🏋️ Exercise Library</h2>
+                <p style="margin-bottom: 15px; color: #6c757d;">Customize your exercise options</p>
                 
-                <div class="input-group">
-                    <label>Daily Alcohol Cost (£)</label>
-                    <input type="number" id="alcoholCost" step="0.01" value="10">
+                <div style="margin-bottom: 20px;">
+                    <strong style="color: #2c5282; display: block; margin-bottom: 10px;">Core/Abs Exercises:</strong>
+                    <div class="input-group">
+                        <input type="text" id="newExerciseCore" placeholder="e.g., Plank - 60s x 3">
+                    </div>
+                    <button class="btn btn-success" onclick="addExercise('core')">➕ Add Core Exercise</button>
+                    <ul class="motivation-list" id="exerciseListCore" style="margin-top: 15px;"></ul>
                 </div>
 
-                <div class="input-group">
-                    <label>Daily Nicotine Cost (£)</label>
-                    <input type="number" id="nicotineCost" step="0.01" value="5">
+                <div style="margin-bottom: 20px;">
+                    <strong style="color: #2c5282; display: block; margin-bottom: 10px;">Chest Exercises:</strong>
+                    <div class="input-group">
+                        <input type="text" id="newExerciseChest" placeholder="e.g., Dumbbell Press - 15 x 3">
+                    </div>
+                    <button class="btn btn-success" onclick="addExercise('chest')">➕ Add Chest Exercise</button>
+                    <ul class="motivation-list" id="exerciseListChest" style="margin-top: 15px;"></ul>
                 </div>
 
-                <button class="btn" onclick="saveSettings()">💾 Save Settings</button>
+                <div style="margin-bottom: 20px;">
+                    <strong style="color: #2c5282; display: block; margin-bottom: 10px;">Compound/Full Body:</strong>
+                    <div class="input-group">
+                        <input type="text" id="newExerciseCompound" placeholder="e.g., Burpees - 15 x 3">
+                    </div>
+                    <button class="btn btn-success" onclick="addExercise('compound')">➕ Add Compound Exercise</button>
+                    <ul class="motivation-list" id="exerciseListCompound" style="margin-top: 15px;"></ul>
+                </div>
             </div>
 
             <div class="card">
@@ -676,35 +692,19 @@
             </div>
 
             <div class="card">
-                <h2>🏋️ Exercise Library</h2>
-                <p style="margin-bottom: 15px; color: #6c757d;">Customize your exercise options</p>
+                <h2>💰 Recovery Costs</h2>
                 
-                <div style="margin-bottom: 20px;">
-                    <strong style="color: #2c5282; display: block; margin-bottom: 10px;">Core/Abs Exercises:</strong>
-                    <div class="input-group">
-                        <input type="text" id="newExerciseCore" placeholder="e.g., Plank - 60s x 3">
-                    </div>
-                    <button class="btn btn-success" onclick="addExercise('core')">➕ Add Core Exercise</button>
-                    <ul class="motivation-list" id="exerciseListCore" style="margin-top: 15px;"></ul>
+                <div class="input-group">
+                    <label>Daily Alcohol Cost (£)</label>
+                    <input type="number" id="alcoholCost" step="0.01" value="10">
                 </div>
 
-                <div style="margin-bottom: 20px;">
-                    <strong style="color: #2c5282; display: block; margin-bottom: 10px;">Chest Exercises:</strong>
-                    <div class="input-group">
-                        <input type="text" id="newExerciseChest" placeholder="e.g., Dumbbell Press - 15 x 3">
-                    </div>
-                    <button class="btn btn-success" onclick="addExercise('chest')">➕ Add Chest Exercise</button>
-                    <ul class="motivation-list" id="exerciseListChest" style="margin-top: 15px;"></ul>
+                <div class="input-group">
+                    <label>Daily Nicotine Cost (£)</label>
+                    <input type="number" id="nicotineCost" step="0.01" value="5">
                 </div>
 
-                <div style="margin-bottom: 20px;">
-                    <strong style="color: #2c5282; display: block; margin-bottom: 10px;">Compound/Full Body:</strong>
-                    <div class="input-group">
-                        <input type="text" id="newExerciseCompound" placeholder="e.g., Burpees - 15 x 3">
-                    </div>
-                    <button class="btn btn-success" onclick="addExercise('compound')">➕ Add Compound Exercise</button>
-                    <ul class="motivation-list" id="exerciseListCompound" style="margin-top: 15px;"></ul>
-                </div>
+                <button class="btn" onclick="saveSettings()">💾 Save Settings</button>
             </div>
 
             <div class="card">
