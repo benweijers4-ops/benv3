@@ -663,25 +663,9 @@
                     <button onclick="nextWeek()" id="nextWeekBtn">Next →</button>
                 </div>
                 
-                <div class="planning-carousel">
+                <div class="planning-carousel" id="planningCarousel">
                     <div class="planning-slides" id="planningSlides">
-                        <!-- This Week Slide -->
-                        <div class="planning-slide">
-                            <div class="week-label">📍 This Week</div>
-                            <div id="lockedDayNotice" class="locked-day-notice hidden">
-                                ⚠️ Days that have passed are locked and shown for reference only
-                            </div>
-                            <div id="thisWeekPlan"></div>
-                            <button class="btn" onclick="saveThisWeekPlanning()">💾 Save This Week</button>
-                        </div>
-                        
-                        <!-- Next Week Slide -->
-                        <div class="planning-slide">
-                            <div class="week-label">🔮 Next Week</div>
-                            <p style="margin-bottom: 20px; color: #6c757d;">Plan ahead for next week</p>
-                            <div id="nextWeekPlan"></div>
-                            <button class="btn" onclick="saveNextWeekPlanning()">💾 Save Next Week</button>
-                        </div>
+                        <!-- Dynamically generated slides -->
                     </div>
                 </div>
             </div>
@@ -1009,7 +993,8 @@
                     'Goblet Squats - 15 x 3'
                 ]
             },
-            dailyLogs: {}
+            dailyLogs: {},
+            weekOverrides: {} // Store specific week plans by Monday date
         };
 
         function loadData() {
@@ -1022,7 +1007,8 @@
                     exerciseLibrary: loadedData.exerciseLibrary || data.exerciseLibrary,
                     affirmations: loadedData.affirmations || data.affirmations,
                     weeklyPlan: loadedData.weeklyPlan || data.weeklyPlan,
-                    goals: loadedData.goals || data.goals
+                    goals: loadedData.goals || data.goals,
+                    weekOverrides: loadedData.weekOverrides || {}
                 };
                 
                 Object.keys(data.weeklyPlan).forEach(day => {
@@ -1099,8 +1085,14 @@
         function showTomorrowPlan() {
             const tomorrowKey = getTomorrowKey();
             const tomorrowDay = getDayOfWeek(tomorrowKey);
-            const plan = data.weeklyPlan[tomorrowDay];
             const tomorrow = new Date(tomorrowKey + 'T00:00:00');
+            
+            // Get tomorrow's week plan (override or template)
+            const tomorrowMonday = getMondayOfWeek(tomorrow);
+            const tomorrowWeekKey = getWeekKey(tomorrowMonday);
+            const weekPlan = data.weekOverrides[tomorrowWeekKey] || data.weeklyPlan;
+            
+            const plan = weekPlan[tomorrowDay];
             
             const planDiv = document.getElementById('tomorrowPlan');
             let html = `<div class="plan-item"><strong>${tomorrow.toLocaleDateString('en-GB', { weekday: 'long', month: 'short', day: 'numeric' })}</strong></div>`;
@@ -1133,7 +1125,14 @@
         function initTodayCheckboxes() {
             const todayKey = getTodayKey();
             const dayOfWeek = getDayOfWeek();
-            const plan = data.weeklyPlan[dayOfWeek];
+            
+            // Get this week's plan (override or template)
+            const today = new Date();
+            const thisMonday = getMondayOfWeek(today);
+            const thisWeekKey = getWeekKey(thisMonday);
+            const weekPlan = data.weekOverrides[thisWeekKey] || data.weeklyPlan;
+            
+            const plan = weekPlan[dayOfWeek];
             const log = data.dailyLogs[todayKey] || {
                 ateHealthy: false,
                 fasted: false,
@@ -1321,7 +1320,14 @@
         function saveToday() {
             const todayKey = getTodayKey();
             const dayOfWeek = getDayOfWeek();
-            const plan = data.weeklyPlan[dayOfWeek];
+            
+            // Get this week's plan (override or template)
+            const today = new Date();
+            const thisMonday = getMondayOfWeek(today);
+            const thisWeekKey = getWeekKey(thisMonday);
+            const weekPlan = data.weekOverrides[thisWeekKey] || data.weeklyPlan;
+            
+            const plan = weekPlan[dayOfWeek];
             const log = data.dailyLogs[todayKey] || {};
 
             log.ateHealthy = document.getElementById('ateHealthy')?.checked || false;
@@ -1706,28 +1712,69 @@
 
         function initWeeklyPlan() {
             currentPlanningSlide = 0;
-            updatePlanningCarousel();
+            planningWeeks = [];
             
             const today = new Date();
-            const dayOfWeek = today.getDay();
-            let daysPassed = dayOfWeek === 0 ? 6 : (dayOfWeek === 1 ? 0 : dayOfWeek - 1);
+            const thisMonday = getMondayOfWeek(today);
             
-            // Show locked day notice if any days have passed
-            const notice = document.getElementById('lockedDayNotice');
-            if (daysPassed > 0) {
-                notice.classList.remove('hidden');
-            } else {
-                notice.classList.add('hidden');
+            // Generate weeks
+            for (let i = 0; i < maxPlanningWeeks; i++) {
+                const weekMonday = new Date(thisMonday);
+                weekMonday.setDate(thisMonday.getDate() + (i * 7));
+                const weekKey = getWeekKey(weekMonday);
+                
+                let label;
+                if (i === 0) {
+                    label = '📍 This Week';
+                } else if (i === 1) {
+                    label = `🔮 Next Week (${getWeekDateRange(weekMonday)})`;
+                } else {
+                    label = `📅 Week of ${getWeekDateRange(weekMonday)}`;
+                }
+                
+                planningWeeks.push({
+                    weekKey: weekKey,
+                    monday: weekMonday,
+                    weekIndex: i,
+                    label: label
+                });
             }
             
-            // Create This Week view
-            createWeekPlanView('thisWeekPlan', data.weeklyPlan, true, daysPassed);
+            // Generate slides
+            const slidesContainer = document.getElementById('planningSlides');
+            slidesContainer.innerHTML = '';
             
-            // Create Next Week view (always fully editable, uses same template)
-            createWeekPlanView('nextWeekPlan', data.weeklyPlan, false, 0);
+            planningWeeks.forEach((week, index) => {
+                const slide = document.createElement('div');
+                slide.className = 'planning-slide';
+                
+                const dayOfWeek = today.getDay();
+                const daysPassedThisWeek = dayOfWeek === 0 ? 6 : (dayOfWeek === 1 ? 0 : dayOfWeek - 1);
+                const isThisWeek = index === 0;
+                const daysPassed = isThisWeek ? daysPassedThisWeek : 0;
+                
+                let content = `<div class="week-label">${week.label}</div>`;
+                
+                if (isThisWeek && daysPassed > 0) {
+                    content += `<div class="locked-day-notice">⚠️ Days that have passed are locked and shown for reference only</div>`;
+                }
+                
+                content += `<div id="weekPlan-${index}"></div>`;
+                content += `<button class="btn" onclick="saveWeekPlanning(${index})">💾 Save This Week</button>`;
+                
+                slide.innerHTML = content;
+                slidesContainer.appendChild(slide);
+                
+                // Get plan for this week (override or template)
+                const weekPlan = data.weekOverrides[week.weekKey] || data.weeklyPlan;
+                createWeekPlanView(`weekPlan-${index}`, weekPlan, index, daysPassed);
+            });
+            
+            updatePlanningCarousel();
+            initSwipeSupport();
         }
 
-        function createWeekPlanView(containerId, planData, isThisWeek, daysPassed) {
+        function createWeekPlanView(containerId, planData, weekIndex, daysPassed) {
             const container = document.getElementById(containerId);
             container.innerHTML = '';
 
@@ -1876,61 +1923,57 @@
             }
         }
 
-        function saveThisWeekPlanning() {
+        function saveWeekPlanning(weekIndex) {
+            const week = planningWeeks[weekIndex];
+            const prefix = `week${weekIndex}`;
+            const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+            
             const today = new Date();
             const dayOfWeek = today.getDay();
-            const daysPassed = dayOfWeek === 0 ? 6 : (dayOfWeek === 1 ? 0 : dayOfWeek - 1);
+            const daysPassedThisWeek = dayOfWeek === 0 ? 6 : (dayOfWeek === 1 ? 0 : dayOfWeek - 1);
+            const isThisWeek = weekIndex === 0;
             
-            const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+            const weekPlan = {};
             
-            // Only update days that haven't passed yet
-            days.forEach((day, index) => {
-                if (index >= daysPassed) {
-                    const workout = document.getElementById(`plan-this-${day}-workout`).value;
-                    const exercises = [];
-                    
-                    if (workout === 'Strength Training') {
-                        document.querySelectorAll(`.exercise-check-this-${day}:checked`).forEach(checkbox => {
-                            exercises.push(checkbox.value);
-                        });
-                    }
-                    
-                    data.weeklyPlan[day] = {
-                        workout: workout,
-                        exercises: exercises,
-                        fasting: document.getElementById(`plan-this-${day}-fasting`).checked,
-                        guitar: document.getElementById(`plan-this-${day}-guitar`).checked
-                    };
+            days.forEach((day, dayIndex) => {
+                // Skip locked days
+                if (isThisWeek && dayIndex < daysPassedThisWeek) {
+                    // Keep existing plan for locked days
+                    weekPlan[day] = data.weeklyPlan[day];
+                    return;
                 }
-            });
-            
-            saveData();
-            alert('✅ This week\'s plan updated for remaining days!');
-        }
-
-        function saveNextWeekPlanning() {
-            const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-            
-            days.forEach(day => {
-                const workout = document.getElementById(`plan-next-${day}-workout`).value;
+                
+                const workout = document.getElementById(`plan-${prefix}-${day}-workout`).value;
                 const exercises = [];
                 
                 if (workout === 'Strength Training') {
-                    document.querySelectorAll(`.exercise-check-next-${day}:checked`).forEach(checkbox => {
+                    document.querySelectorAll(`.exercise-check-${prefix}-${day}:checked`).forEach(checkbox => {
                         exercises.push(checkbox.value);
                     });
                 }
                 
-                data.weeklyPlan[day] = {
+                weekPlan[day] = {
                     workout: workout,
                     exercises: exercises,
-                    fasting: document.getElementById(`plan-next-${day}-fasting`).checked,
-                    guitar: document.getElementById(`plan-next-${day}-guitar`).checked
+                    fasting: document.getElementById(`plan-${prefix}-${day}-fasting`).checked,
+                    guitar: document.getElementById(`plan-${prefix}-${day}-guitar`).checked
                 };
             });
             
+            if (isThisWeek) {
+                // Update the template for this week
+                days.forEach((day, dayIndex) => {
+                    if (dayIndex >= daysPassedThisWeek) {
+                        data.weeklyPlan[day] = weekPlan[day];
+                    }
+                });
+            } else {
+                // Store as override for this specific week
+                data.weekOverrides[week.weekKey] = weekPlan;
+            }
+            
             saveData();
-            alert('✅ Next week\'s plan saved!');
+            alert(`✅ Week saved!`);
         }
 
         function saveGoals() {
@@ -2082,6 +2125,10 @@
         let weightChart = null;
         let bodyFatChart = null;
         let currentPlanningSlide = 0;
+        let maxPlanningWeeks = 8; // Show 8 weeks ahead
+        let planningWeeks = [];
+        let touchStartX = 0;
+        let touchEndX = 0;
 
         function previousWeek() {
             if (currentPlanningSlide > 0) {
@@ -2091,7 +2138,7 @@
         }
 
         function nextWeek() {
-            if (currentPlanningSlide < 1) {
+            if (currentPlanningSlide < planningWeeks.length - 1) {
                 currentPlanningSlide++;
                 updatePlanningCarousel();
             }
@@ -2102,10 +2149,58 @@
             slides.style.transform = `translateX(-${currentPlanningSlide * 100}%)`;
             
             document.getElementById('prevWeekBtn').disabled = currentPlanningSlide === 0;
-            document.getElementById('nextWeekBtn').disabled = currentPlanningSlide === 1;
+            document.getElementById('nextWeekBtn').disabled = currentPlanningSlide === planningWeeks.length - 1;
             
             const indicator = document.getElementById('weekIndicator');
-            indicator.textContent = currentPlanningSlide === 0 ? 'This Week' : 'Next Week';
+            const currentWeek = planningWeeks[currentPlanningSlide];
+            indicator.textContent = currentWeek.label;
+        }
+
+        function getMondayOfWeek(date) {
+            const d = new Date(date);
+            const day = d.getDay();
+            const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+            const monday = new Date(d.setDate(diff));
+            monday.setHours(0, 0, 0, 0);
+            return monday;
+        }
+
+        function getWeekKey(monday) {
+            return monday.toISOString().split('T')[0];
+        }
+
+        function getWeekDateRange(monday) {
+            const sunday = new Date(monday);
+            sunday.setDate(monday.getDate() + 6);
+            return `${monday.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} - ${sunday.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`;
+        }
+
+        function initSwipeSupport() {
+            const carousel = document.getElementById('planningCarousel');
+            
+            carousel.addEventListener('touchstart', (e) => {
+                touchStartX = e.changedTouches[0].screenX;
+            });
+
+            carousel.addEventListener('touchend', (e) => {
+                touchEndX = e.changedTouches[0].screenX;
+                handleSwipe();
+            });
+        }
+
+        function handleSwipe() {
+            const swipeThreshold = 50;
+            const diff = touchStartX - touchEndX;
+            
+            if (Math.abs(diff) > swipeThreshold) {
+                if (diff > 0) {
+                    // Swipe left - next week
+                    nextWeek();
+                } else {
+                    // Swipe right - previous week
+                    previousWeek();
+                }
+            }
         }
 
         function getWeekNumber(dateString) {
