@@ -1037,6 +1037,15 @@
                 saturday: { workout: 'Cardio', exercises: [], fasting: false, guitar: true },
                 sunday: { workout: 'Rest', exercises: [], fasting: false, guitar: false }
             },
+            nextWeekPlan: {
+                monday: { workout: 'Rest', exercises: [], fasting: false, guitar: false },
+                tuesday: { workout: 'Cardio', exercises: [], fasting: true, guitar: true },
+                wednesday: { workout: 'Rest', exercises: [], fasting: false, guitar: false },
+                thursday: { workout: 'Strength Training', exercises: [], fasting: true, guitar: true },
+                friday: { workout: 'Rest', exercises: [], fasting: false, guitar: false },
+                saturday: { workout: 'Cardio', exercises: [], fasting: false, guitar: true },
+                sunday: { workout: 'Rest', exercises: [], fasting: false, guitar: false }
+            },
             exerciseLibrary: {
                 core: [
                     'Plank - 45s x 3',
@@ -1078,6 +1087,7 @@
                     exerciseLibrary: loadedData.exerciseLibrary || data.exerciseLibrary,
                     affirmations: loadedData.affirmations || data.affirmations,
                     weeklyPlan: loadedData.weeklyPlan || data.weeklyPlan,
+                    nextWeekPlan: loadedData.nextWeekPlan || data.nextWeekPlan,
                     goals: loadedData.goals || data.goals
                 };
                 
@@ -1086,12 +1096,37 @@
                         data.weeklyPlan[day].exercises = [];
                     }
                 });
+                
+                Object.keys(data.nextWeekPlan).forEach(day => {
+                    if (!data.nextWeekPlan[day].exercises) {
+                        data.nextWeekPlan[day].exercises = [];
+                    }
+                });
             }
+            
+            // Check if it's a new week and rotate plans
+            checkAndRotatePlans();
             
             // Backfill plan snapshots for this week's already-completed days
             backfillPlanSnapshots();
             
             updateUI();
+        }
+        
+        function checkAndRotatePlans() {
+            const lastRotation = localStorage.getItem('lastPlanRotation');
+            const currentWeekKey = getWeekKey(new Date());
+            
+            if (lastRotation !== currentWeekKey) {
+                // It's a new week - move next week's plan to current week
+                if (data.nextWeekPlan) {
+                    data.weeklyPlan = JSON.parse(JSON.stringify(data.nextWeekPlan));
+                    // Reset next week to a copy of the new current week (or could be blank)
+                    data.nextWeekPlan = JSON.parse(JSON.stringify(data.weeklyPlan));
+                }
+                localStorage.setItem('lastPlanRotation', currentWeekKey);
+                saveData();
+            }
         }
         
         function backfillPlanSnapshots() {
@@ -1779,8 +1814,8 @@
             // Create This Week view
             createWeekPlanView('thisWeekPlan', data.weeklyPlan, true, daysPassed);
             
-            // Create Next Week view (always fully editable, uses same template)
-            createWeekPlanView('nextWeekPlan', data.weeklyPlan, false, 0);
+            // Create Next Week view (uses nextWeekPlan)
+            createWeekPlanView('nextWeekPlan', data.nextWeekPlan, false, 0);
         }
 
         function createWeekPlanView(containerId, planData, isThisWeek, daysPassed) {
@@ -1977,7 +2012,7 @@
                     });
                 }
                 
-                data.weeklyPlan[day] = {
+                data.nextWeekPlan[day] = {
                     workout: workout,
                     exercises: exercises,
                     fasting: document.getElementById(`plan-next-${day}-fasting`).checked,
@@ -2167,8 +2202,9 @@
         function getMonday(date) {
             const d = new Date(date);
             const day = d.getDay();
-            const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-            const monday = new Date(d.setDate(diff));
+            // If Sunday (0), go back 6 days. Otherwise go back (day - 1) days
+            const diff = day === 0 ? -6 : 1 - day;
+            const monday = new Date(d.setDate(d.getDate() + diff));
             monday.setHours(0, 0, 0, 0);
             return monday;
         }
@@ -2239,32 +2275,52 @@
                         count: 0, 
                         weekKey: weekKey,
                         workouts: 0,
+                        workoutsPlanned: 0,
                         guitar: 0,
+                        guitarPlanned: 0,
                         fasting: 0,
+                        fastingPlanned: 0,
                         steps: 0,
-                        healthy: 0
+                        stepsPlanned: 0,
+                        healthy: 0,
+                        healthyPlanned: 0
                     };
                 }
                 weeklyData[weekKey].total += percentage;
                 weeklyData[weekKey].count++;
                 
-                // Track individual activities
-                if (log.workedOut) weeklyData[weekKey].workouts++;
-                if (log.guitarPractice) weeklyData[weekKey].guitar++;
-                if (log.fasted) weeklyData[weekKey].fasting++;
-                if (log.stepsTarget) weeklyData[weekKey].steps++;
+                // Track planned vs completed
+                weeklyData[weekKey].healthyPlanned++;
+                weeklyData[weekKey].stepsPlanned++;
+                
                 if (log.ateHealthy) weeklyData[weekKey].healthy++;
+                if (log.stepsTarget) weeklyData[weekKey].steps++;
+                
+                if (plan.workout !== 'Rest') {
+                    weeklyData[weekKey].workoutsPlanned++;
+                    if (log.workedOut) weeklyData[weekKey].workouts++;
+                }
+                
+                if (plan.guitar) {
+                    weeklyData[weekKey].guitarPlanned++;
+                    if (log.guitarPractice) weeklyData[weekKey].guitar++;
+                }
+                
+                if (plan.fasting) {
+                    weeklyData[weekKey].fastingPlanned++;
+                    if (log.fasted) weeklyData[weekKey].fasting++;
+                }
             });
             
             const result = Object.keys(weeklyData).map(weekKey => ({
                 week: getWeekLabel(weekKey),
                 percentage: weeklyData[weekKey].total / weeklyData[weekKey].count,
                 weekKey: weekKey,
-                workouts: weeklyData[weekKey].workouts,
-                guitar: weeklyData[weekKey].guitar,
-                fasting: weeklyData[weekKey].fasting,
-                steps: weeklyData[weekKey].steps,
-                healthy: weeklyData[weekKey].healthy
+                workoutsPercent: weeklyData[weekKey].workoutsPlanned > 0 ? (weeklyData[weekKey].workouts / weeklyData[weekKey].workoutsPlanned) * 100 : 0,
+                guitarPercent: weeklyData[weekKey].guitarPlanned > 0 ? (weeklyData[weekKey].guitar / weeklyData[weekKey].guitarPlanned) * 100 : 0,
+                fastingPercent: weeklyData[weekKey].fastingPlanned > 0 ? (weeklyData[weekKey].fasting / weeklyData[weekKey].fastingPlanned) * 100 : 0,
+                stepsPercent: weeklyData[weekKey].stepsPlanned > 0 ? (weeklyData[weekKey].steps / weeklyData[weekKey].stepsPlanned) * 100 : 0,
+                healthyPercent: weeklyData[weekKey].healthyPlanned > 0 ? (weeklyData[weekKey].healthy / weeklyData[weekKey].healthyPlanned) * 100 : 0
             })).sort((a, b) => a.weekKey.localeCompare(b.weekKey));
             
             return result;
@@ -2367,40 +2423,40 @@
                     labels: weeklyData.map(w => w.week),
                     datasets: [
                         {
-                            label: '🥗 Healthy Eating',
-                            data: weeklyData.map(w => w.healthy),
+                            label: '🥗 Healthy Eating %',
+                            data: weeklyData.map(w => w.healthyPercent),
                             borderColor: '#48bb78',
                             backgroundColor: 'rgba(72, 187, 120, 0.1)',
                             tension: 0.4,
                             fill: false
                         },
                         {
-                            label: '💪 Workouts',
-                            data: weeklyData.map(w => w.workouts),
+                            label: '💪 Workouts %',
+                            data: weeklyData.map(w => w.workoutsPercent),
                             borderColor: '#2c5282',
                             backgroundColor: 'rgba(44, 82, 130, 0.1)',
                             tension: 0.4,
                             fill: false
                         },
                         {
-                            label: '🎸 Guitar',
-                            data: weeklyData.map(w => w.guitar),
+                            label: '🎸 Guitar %',
+                            data: weeklyData.map(w => w.guitarPercent),
                             borderColor: '#ed8936',
                             backgroundColor: 'rgba(237, 137, 54, 0.1)',
                             tension: 0.4,
                             fill: false
                         },
                         {
-                            label: '⏱️ Fasting',
-                            data: weeklyData.map(w => w.fasting),
+                            label: '⏱️ Fasting %',
+                            data: weeklyData.map(w => w.fastingPercent),
                             borderColor: '#9f7aea',
                             backgroundColor: 'rgba(159, 122, 234, 0.1)',
                             tension: 0.4,
                             fill: false
                         },
                         {
-                            label: '👟 Steps',
-                            data: weeklyData.map(w => w.steps),
+                            label: '👟 Steps %',
+                            data: weeklyData.map(w => w.stepsPercent),
                             borderColor: '#38b2ac',
                             backgroundColor: 'rgba(56, 178, 172, 0.1)',
                             tension: 0.4,
@@ -2415,13 +2471,23 @@
                         legend: {
                             display: true,
                             position: 'bottom'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + context.parsed.y.toFixed(0) + '%';
+                                }
+                            }
                         }
                     },
                     scales: {
                         y: {
                             beginAtZero: true,
+                            max: 100,
                             ticks: {
-                                stepSize: 1
+                                callback: function(value) {
+                                    return value + '%';
+                                }
                             }
                         }
                     }
