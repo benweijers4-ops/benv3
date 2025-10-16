@@ -663,9 +663,25 @@
                     <button onclick="nextWeek()" id="nextWeekBtn">Next →</button>
                 </div>
                 
-                <div class="planning-carousel" id="planningCarousel">
+                <div class="planning-carousel">
                     <div class="planning-slides" id="planningSlides">
-                        <!-- Dynamically generated slides -->
+                        <!-- This Week Slide -->
+                        <div class="planning-slide">
+                            <div class="week-label">📍 This Week</div>
+                            <div id="lockedDayNotice" class="locked-day-notice hidden">
+                                ⚠️ Days that have passed are locked and shown for reference only
+                            </div>
+                            <div id="thisWeekPlan"></div>
+                            <button class="btn" onclick="saveThisWeekPlanning()">💾 Save This Week</button>
+                        </div>
+                        
+                        <!-- Next Week Slide -->
+                        <div class="planning-slide">
+                            <div class="week-label">🔮 Next Week</div>
+                            <p style="margin-bottom: 20px; color: #6c757d;">Plan ahead for next week</p>
+                            <div id="nextWeekPlan"></div>
+                            <button class="btn" onclick="saveNextWeekPlanning()">💾 Save Next Week</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -993,8 +1009,7 @@
                     'Goblet Squats - 15 x 3'
                 ]
             },
-            dailyLogs: {},
-            weekOverrides: {} // Store specific week plans by Monday date
+            dailyLogs: {}
         };
 
         function loadData() {
@@ -1007,8 +1022,7 @@
                     exerciseLibrary: loadedData.exerciseLibrary || data.exerciseLibrary,
                     affirmations: loadedData.affirmations || data.affirmations,
                     weeklyPlan: loadedData.weeklyPlan || data.weeklyPlan,
-                    goals: loadedData.goals || data.goals,
-                    weekOverrides: loadedData.weekOverrides || {}
+                    goals: loadedData.goals || data.goals
                 };
                 
                 Object.keys(data.weeklyPlan).forEach(day => {
@@ -1085,14 +1099,8 @@
         function showTomorrowPlan() {
             const tomorrowKey = getTomorrowKey();
             const tomorrowDay = getDayOfWeek(tomorrowKey);
+            const plan = data.weeklyPlan[tomorrowDay];
             const tomorrow = new Date(tomorrowKey + 'T00:00:00');
-            
-            // Get tomorrow's week plan (override or template)
-            const tomorrowMonday = getMondayOfWeek(tomorrow);
-            const tomorrowWeekKey = getWeekKey(tomorrowMonday);
-            const weekPlan = data.weekOverrides[tomorrowWeekKey] || data.weeklyPlan;
-            
-            const plan = weekPlan[tomorrowDay];
             
             const planDiv = document.getElementById('tomorrowPlan');
             let html = `<div class="plan-item"><strong>${tomorrow.toLocaleDateString('en-GB', { weekday: 'long', month: 'short', day: 'numeric' })}</strong></div>`;
@@ -1125,14 +1133,7 @@
         function initTodayCheckboxes() {
             const todayKey = getTodayKey();
             const dayOfWeek = getDayOfWeek();
-            
-            // Get this week's plan (override or template)
-            const today = new Date();
-            const thisMonday = getMondayOfWeek(today);
-            const thisWeekKey = getWeekKey(thisMonday);
-            const weekPlan = data.weekOverrides[thisWeekKey] || data.weeklyPlan;
-            
-            const plan = weekPlan[dayOfWeek];
+            const plan = data.weeklyPlan[dayOfWeek];
             const log = data.dailyLogs[todayKey] || {
                 ateHealthy: false,
                 fasted: false,
@@ -1320,14 +1321,7 @@
         function saveToday() {
             const todayKey = getTodayKey();
             const dayOfWeek = getDayOfWeek();
-            
-            // Get this week's plan (override or template)
-            const today = new Date();
-            const thisMonday = getMondayOfWeek(today);
-            const thisWeekKey = getWeekKey(thisMonday);
-            const weekPlan = data.weekOverrides[thisWeekKey] || data.weeklyPlan;
-            
-            const plan = weekPlan[dayOfWeek];
+            const plan = data.weeklyPlan[dayOfWeek];
             const log = data.dailyLogs[todayKey] || {};
 
             log.ateHealthy = document.getElementById('ateHealthy')?.checked || false;
@@ -1712,69 +1706,28 @@
 
         function initWeeklyPlan() {
             currentPlanningSlide = 0;
-            planningWeeks = [];
+            updatePlanningCarousel();
             
             const today = new Date();
-            const thisMonday = getMondayOfWeek(today);
+            const dayOfWeek = today.getDay();
+            let daysPassed = dayOfWeek === 0 ? 6 : (dayOfWeek === 1 ? 0 : dayOfWeek - 1);
             
-            // Generate weeks
-            for (let i = 0; i < maxPlanningWeeks; i++) {
-                const weekMonday = new Date(thisMonday);
-                weekMonday.setDate(thisMonday.getDate() + (i * 7));
-                const weekKey = getWeekKey(weekMonday);
-                
-                let label;
-                if (i === 0) {
-                    label = '📍 This Week';
-                } else if (i === 1) {
-                    label = `🔮 Next Week (${getWeekDateRange(weekMonday)})`;
-                } else {
-                    label = `📅 Week of ${getWeekDateRange(weekMonday)}`;
-                }
-                
-                planningWeeks.push({
-                    weekKey: weekKey,
-                    monday: weekMonday,
-                    weekIndex: i,
-                    label: label
-                });
+            // Show locked day notice if any days have passed
+            const notice = document.getElementById('lockedDayNotice');
+            if (daysPassed > 0) {
+                notice.classList.remove('hidden');
+            } else {
+                notice.classList.add('hidden');
             }
             
-            // Generate slides
-            const slidesContainer = document.getElementById('planningSlides');
-            slidesContainer.innerHTML = '';
+            // Create This Week view
+            createWeekPlanView('thisWeekPlan', data.weeklyPlan, true, daysPassed);
             
-            planningWeeks.forEach((week, index) => {
-                const slide = document.createElement('div');
-                slide.className = 'planning-slide';
-                
-                const dayOfWeek = today.getDay();
-                const daysPassedThisWeek = dayOfWeek === 0 ? 6 : (dayOfWeek === 1 ? 0 : dayOfWeek - 1);
-                const isThisWeek = index === 0;
-                const daysPassed = isThisWeek ? daysPassedThisWeek : 0;
-                
-                let content = `<div class="week-label">${week.label}</div>`;
-                
-                if (isThisWeek && daysPassed > 0) {
-                    content += `<div class="locked-day-notice">⚠️ Days that have passed are locked and shown for reference only</div>`;
-                }
-                
-                content += `<div id="weekPlan-${index}"></div>`;
-                content += `<button class="btn" onclick="saveWeekPlanning(${index})">💾 Save This Week</button>`;
-                
-                slide.innerHTML = content;
-                slidesContainer.appendChild(slide);
-                
-                // Get plan for this week (override or template)
-                const weekPlan = data.weekOverrides[week.weekKey] || data.weeklyPlan;
-                createWeekPlanView(`weekPlan-${index}`, weekPlan, index, daysPassed);
-            });
-            
-            updatePlanningCarousel();
-            initSwipeSupport();
+            // Create Next Week view (always fully editable, uses same template)
+            createWeekPlanView('nextWeekPlan', data.weeklyPlan, false, 0);
         }
 
-        function createWeekPlanView(containerId, planData, weekIndex, daysPassed) {
+        function createWeekPlanView(containerId, planData, isThisWeek, daysPassed) {
             const container = document.getElementById(containerId);
             container.innerHTML = '';
 
@@ -1923,57 +1876,61 @@
             }
         }
 
-        function saveWeekPlanning(weekIndex) {
-            const week = planningWeeks[weekIndex];
-            const prefix = `week${weekIndex}`;
-            const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-            
+        function saveThisWeekPlanning() {
             const today = new Date();
             const dayOfWeek = today.getDay();
-            const daysPassedThisWeek = dayOfWeek === 0 ? 6 : (dayOfWeek === 1 ? 0 : dayOfWeek - 1);
-            const isThisWeek = weekIndex === 0;
+            const daysPassed = dayOfWeek === 0 ? 6 : (dayOfWeek === 1 ? 0 : dayOfWeek - 1);
             
-            const weekPlan = {};
+            const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
             
-            days.forEach((day, dayIndex) => {
-                // Skip locked days
-                if (isThisWeek && dayIndex < daysPassedThisWeek) {
-                    // Keep existing plan for locked days
-                    weekPlan[day] = data.weeklyPlan[day];
-                    return;
+            // Only update days that haven't passed yet
+            days.forEach((day, index) => {
+                if (index >= daysPassed) {
+                    const workout = document.getElementById(`plan-this-${day}-workout`).value;
+                    const exercises = [];
+                    
+                    if (workout === 'Strength Training') {
+                        document.querySelectorAll(`.exercise-check-this-${day}:checked`).forEach(checkbox => {
+                            exercises.push(checkbox.value);
+                        });
+                    }
+                    
+                    data.weeklyPlan[day] = {
+                        workout: workout,
+                        exercises: exercises,
+                        fasting: document.getElementById(`plan-this-${day}-fasting`).checked,
+                        guitar: document.getElementById(`plan-this-${day}-guitar`).checked
+                    };
                 }
-                
-                const workout = document.getElementById(`plan-${prefix}-${day}-workout`).value;
+            });
+            
+            saveData();
+            alert('✅ This week\'s plan updated for remaining days!');
+        }
+
+        function saveNextWeekPlanning() {
+            const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+            
+            days.forEach(day => {
+                const workout = document.getElementById(`plan-next-${day}-workout`).value;
                 const exercises = [];
                 
                 if (workout === 'Strength Training') {
-                    document.querySelectorAll(`.exercise-check-${prefix}-${day}:checked`).forEach(checkbox => {
+                    document.querySelectorAll(`.exercise-check-next-${day}:checked`).forEach(checkbox => {
                         exercises.push(checkbox.value);
                     });
                 }
                 
-                weekPlan[day] = {
+                data.weeklyPlan[day] = {
                     workout: workout,
                     exercises: exercises,
-                    fasting: document.getElementById(`plan-${prefix}-${day}-fasting`).checked,
-                    guitar: document.getElementById(`plan-${prefix}-${day}-guitar`).checked
+                    fasting: document.getElementById(`plan-next-${day}-fasting`).checked,
+                    guitar: document.getElementById(`plan-next-${day}-guitar`).checked
                 };
             });
             
-            if (isThisWeek) {
-                // Update the template for this week
-                days.forEach((day, dayIndex) => {
-                    if (dayIndex >= daysPassedThisWeek) {
-                        data.weeklyPlan[day] = weekPlan[day];
-                    }
-                });
-            } else {
-                // Store as override for this specific week
-                data.weekOverrides[week.weekKey] = weekPlan;
-            }
-            
             saveData();
-            alert(`✅ Week saved!`);
+            alert('✅ Next week\'s plan saved!');
         }
 
         function saveGoals() {
@@ -2125,10 +2082,6 @@
         let weightChart = null;
         let bodyFatChart = null;
         let currentPlanningSlide = 0;
-        let maxPlanningWeeks = 8; // Show 8 weeks ahead
-        let planningWeeks = [];
-        let touchStartX = 0;
-        let touchEndX = 0;
 
         function previousWeek() {
             if (currentPlanningSlide > 0) {
@@ -2138,7 +2091,7 @@
         }
 
         function nextWeek() {
-            if (currentPlanningSlide < planningWeeks.length - 1) {
+            if (currentPlanningSlide < 1) {
                 currentPlanningSlide++;
                 updatePlanningCarousel();
             }
@@ -2149,14 +2102,13 @@
             slides.style.transform = `translateX(-${currentPlanningSlide * 100}%)`;
             
             document.getElementById('prevWeekBtn').disabled = currentPlanningSlide === 0;
-            document.getElementById('nextWeekBtn').disabled = currentPlanningSlide === planningWeeks.length - 1;
+            document.getElementById('nextWeekBtn').disabled = currentPlanningSlide === 1;
             
             const indicator = document.getElementById('weekIndicator');
-            const currentWeek = planningWeeks[currentPlanningSlide];
-            indicator.textContent = currentWeek.label;
+            indicator.textContent = currentPlanningSlide === 0 ? 'This Week' : 'Next Week';
         }
 
-        function getMondayOfWeek(date) {
+        function getMonday(date) {
             const d = new Date(date);
             const day = d.getDay();
             const diff = d.getDate() - day + (day === 0 ? -6 : 1);
@@ -2165,55 +2117,21 @@
             return monday;
         }
 
-        function getWeekKey(monday) {
+        function getWeekKey(date) {
+            const monday = getMonday(date);
             return monday.toISOString().split('T')[0];
         }
 
-        function getWeekDateRange(monday) {
+        function getWeekLabel(weekKey) {
+            const monday = new Date(weekKey + 'T00:00:00');
             const sunday = new Date(monday);
             sunday.setDate(monday.getDate() + 6);
-            return `${monday.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} - ${sunday.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`;
-        }
-
-        function initSwipeSupport() {
-            const carousel = document.getElementById('planningCarousel');
             
-            carousel.addEventListener('touchstart', (e) => {
-                touchStartX = e.changedTouches[0].screenX;
-            });
-
-            carousel.addEventListener('touchend', (e) => {
-                touchEndX = e.changedTouches[0].screenX;
-                handleSwipe();
-            });
-        }
-
-        function handleSwipe() {
-            const swipeThreshold = 50;
-            const diff = touchStartX - touchEndX;
-            
-            if (Math.abs(diff) > swipeThreshold) {
-                if (diff > 0) {
-                    // Swipe left - next week
-                    nextWeek();
-                } else {
-                    // Swipe right - previous week
-                    previousWeek();
-                }
+            if (monday.getMonth() === sunday.getMonth()) {
+                return `${monday.getDate()}-${sunday.getDate()} ${monday.toLocaleDateString('en-GB', { month: 'short' })}`;
+            } else {
+                return `${monday.getDate()} ${monday.toLocaleDateString('en-GB', { month: 'short' })} - ${sunday.getDate()} ${sunday.toLocaleDateString('en-GB', { month: 'short' })}`;
             }
-        }
-
-        function getWeekNumber(dateString) {
-            const date = new Date(dateString + 'T00:00:00');
-            const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
-            const pastDaysOfYear = (date - firstDayOfYear) / 86400000;
-            return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
-        }
-
-        function getWeekLabel(dateString) {
-            const date = new Date(dateString + 'T00:00:00');
-            const weekNum = getWeekNumber(dateString);
-            return `Week ${weekNum} (${date.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })})`;
         }
 
         function calculateWeeklyCompletions() {
@@ -2222,6 +2140,7 @@
             Object.keys(data.dailyLogs).sort().forEach(dateKey => {
                 const log = data.dailyLogs[dateKey];
                 const dayOfWeek = getDayOfWeek(dateKey);
+                const weekKey = getWeekKey(dateKey);
                 
                 // Use saved plan from log if available, otherwise use current plan as fallback
                 let plan;
@@ -2258,12 +2177,11 @@
                 
                 const percentage = totalGoals > 0 ? (completedGoals / totalGoals) * 100 : 0;
                 
-                const weekLabel = getWeekLabel(dateKey);
-                if (!weeklyData[weekLabel]) {
-                    weeklyData[weekLabel] = { 
+                if (!weeklyData[weekKey]) {
+                    weeklyData[weekKey] = { 
                         total: 0, 
                         count: 0, 
-                        dateKey: dateKey,
+                        weekKey: weekKey,
                         workouts: 0,
                         guitar: 0,
                         fasting: 0,
@@ -2271,27 +2189,27 @@
                         healthy: 0
                     };
                 }
-                weeklyData[weekLabel].total += percentage;
-                weeklyData[weekLabel].count++;
+                weeklyData[weekKey].total += percentage;
+                weeklyData[weekKey].count++;
                 
                 // Track individual activities
-                if (log.workedOut) weeklyData[weekLabel].workouts++;
-                if (log.guitarPractice) weeklyData[weekLabel].guitar++;
-                if (log.fasted) weeklyData[weekLabel].fasting++;
-                if (log.stepsTarget) weeklyData[weekLabel].steps++;
-                if (log.ateHealthy) weeklyData[weekLabel].healthy++;
+                if (log.workedOut) weeklyData[weekKey].workouts++;
+                if (log.guitarPractice) weeklyData[weekKey].guitar++;
+                if (log.fasted) weeklyData[weekKey].fasting++;
+                if (log.stepsTarget) weeklyData[weekKey].steps++;
+                if (log.ateHealthy) weeklyData[weekKey].healthy++;
             });
             
-            const result = Object.keys(weeklyData).map(week => ({
-                week: week,
-                percentage: weeklyData[week].total / weeklyData[week].count,
-                dateKey: weeklyData[week].dateKey,
-                workouts: weeklyData[week].workouts,
-                guitar: weeklyData[week].guitar,
-                fasting: weeklyData[week].fasting,
-                steps: weeklyData[week].steps,
-                healthy: weeklyData[week].healthy
-            })).sort((a, b) => a.dateKey.localeCompare(b.dateKey));
+            const result = Object.keys(weeklyData).map(weekKey => ({
+                week: getWeekLabel(weekKey),
+                percentage: weeklyData[weekKey].total / weeklyData[weekKey].count,
+                weekKey: weekKey,
+                workouts: weeklyData[weekKey].workouts,
+                guitar: weeklyData[weekKey].guitar,
+                fasting: weeklyData[weekKey].fasting,
+                steps: weeklyData[weekKey].steps,
+                healthy: weeklyData[weekKey].healthy
+            })).sort((a, b) => a.weekKey.localeCompare(b.weekKey));
             
             return result;
         }
