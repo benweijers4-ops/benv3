@@ -1634,48 +1634,9 @@
                 { label: 'Step Goals', current: steps, goal: plannedSteps, icon: '👟' }
             ];
 
-            // Calculate overall completion percentage based on actual planned goals
-            let totalPlannedGoals = 0;
-            let totalCompleted = 0;
-            
-            // For each day up to and INCLUDING today, count total checkboxes available vs completed
-            for (let i = 0; i < daysToCount; i++) {
-                const currentDate = new Date(startOfWeek);
-                currentDate.setDate(startOfWeek.getDate() + i);
-                const dateKey = currentDate.toISOString().split('T')[0];
-                const dayName = days[i];
-                const log = data.dailyLogs[dateKey] || {};
-                
-                // Use saved plan from log if available, otherwise use current plan as fallback
-                let plan;
-                if (log.plannedWorkout !== undefined) {
-                    plan = {
-                        workout: log.plannedWorkout,
-                        guitar: log.plannedGuitar,
-                        fasting: log.plannedFasting
-                    };
-                } else {
-                    plan = data.weeklyPlan[dayName];
-                }
-                
-                // Always have eating healthy and steps
-                totalPlannedGoals += 2;
-                if (log.ateHealthy) totalCompleted++;
-                if (log.stepsTarget) totalCompleted++;
-                
-                if (plan.workout !== 'Rest') {
-                    totalPlannedGoals++;
-                    if (log.workedOut) totalCompleted++;
-                }
-                if (plan.guitar) {
-                    totalPlannedGoals++;
-                    if (log.guitarPractice) totalCompleted++;
-                }
-                if (plan.fasting) {
-                    totalPlannedGoals++;
-                    if (log.fasted) totalCompleted++;
-                }
-            }
+            // Calculate overall completion percentage - simple sum of all categories
+            const totalPlannedGoals = plannedHealthy + plannedWorkouts + plannedGuitar + plannedFasting + plannedSteps;
+            const totalCompleted = healthy + workouts + guitar + fasting + steps;
             
             const overallPercent = totalPlannedGoals > 0 ? (totalCompleted / totalPlannedGoals) * 100 : 0;
             const overallStatus = overallPercent >= 100 ? '✅' : overallPercent > 0 ? '🔄' : '⏳';
