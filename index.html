@@ -1465,8 +1465,16 @@
             let thisWeekHealthy = 0;
 
             const today = new Date();
+            const todayKey = getTodayKey();
             const dayOfWeek = today.getDay();
-            const startOfWeek = getMonday(today);
+            const startOfWeek = new Date(today);
+            const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+            startOfWeek.setDate(today.getDate() - daysFromMonday);
+            startOfWeek.setHours(0, 0, 0, 0);
+            
+            // Create end of today for proper comparison
+            const endOfToday = new Date(today);
+            endOfToday.setHours(23, 59, 59, 999);
 
             Object.keys(data.dailyLogs).sort().forEach(date => {
                 const log = data.dailyLogs[date];
@@ -1480,20 +1488,19 @@
                 if (log.weight) weights.push(parseFloat(log.weight));
                 if (log.bodyFat) bodyFats.push(parseFloat(log.bodyFat));
 
-                // Count this week (but NOT including today)
-                if (logDate >= startOfWeek && logDate < today) {
+                // Count this week INCLUDING today
+                if (logDate >= startOfWeek && logDate <= endOfToday) {
                     if (log.workedOut) {
                         thisWeekWorkouts++;
-                        // Check if it was strength training
-                        const dayOfWeekName = getDayOfWeek(date);
-                        let plan;
-                        if (log.plannedWorkout !== undefined) {
-                            plan = { workout: log.plannedWorkout };
-                        } else {
-                            plan = data.weeklyPlan[dayOfWeekName];
-                        }
-                        if (plan && plan.workout === 'Strength Training') {
+                        // Use saved plan if available, otherwise fallback to current plan
+                        if (log.plannedWorkout === 'Strength Training') {
                             thisWeekStrength++;
+                        } else {
+                            const dayOfWeekName = getDayOfWeek(date);
+                            const plan = data.weeklyPlan[dayOfWeekName];
+                            if (plan && plan.workout === 'Strength Training') {
+                                thisWeekStrength++;
+                            }
                         }
                     }
                     if (log.guitarPractice) thisWeekGuitar++;
@@ -1553,42 +1560,93 @@
         function updateWeeklyProgress(workouts, strength, guitar, fasting, steps, healthy) {
             const progressDiv = document.getElementById('weeklyProgress');
             
-            // Use the same calculation as the trends page for consistency
+            // Calculate what was actually planned for days that have passed INCLUDING TODAY
             const today = new Date();
-            const weekKey = getWeekKey(today);
-            const dayOfWeek = today.getDay();
-            const startOfWeek = getMonday(today);
+            const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
             
-            // Calculate how many days have passed since Monday (not including today)
-            let daysPassed = 0;
-            if (dayOfWeek === 0) {
-                daysPassed = 6; // Sunday - count Monday through Saturday
-            } else if (dayOfWeek === 1) {
-                daysPassed = 0; // Monday - no days have passed yet
-            } else {
-                daysPassed = dayOfWeek - 1; // Other days
-            }
+            // Get Monday of this week
+            const startOfWeek = new Date(today);
+            const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // If Sunday, go back 6 days to Monday
+            startOfWeek.setDate(today.getDate() - daysFromMonday);
+            startOfWeek.setHours(0, 0, 0, 0);
             
-            // Calculate using the same method as calculateWeeklyCompletions
-            let totalGoalsForWeek = 0;
-            let completedGoalsForWeek = 0;
             let plannedWorkouts = 0;
             let plannedStrength = 0;
             let plannedGuitar = 0;
             let plannedFasting = 0;
-            let plannedSteps = daysPassed; // One per day
-            let plannedHealthy = daysPassed; // One per day
+            let plannedSteps = 0;
+            let plannedHealthy = 0;
             
             const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
             
-            for (let i = 0; i < daysPassed; i++) {
+            // Calculate how many days to count INCLUDING today
+            let daysToCount = 0;
+            if (dayOfWeek === 0) {
+                // Sunday - count all 7 days (Monday through Sunday)
+                daysToCount = 7;
+            } else {
+                // Monday through Saturday - count from Monday up to and including today
+                daysToCount = dayOfWeek;
+            }
+            
+            // Count days from Monday up to AND INCLUDING today
+            for (let i = 0; i < daysToCount; i++) {
+                const currentDate = new Date(startOfWeek);
+                currentDate.setDate(startOfWeek.getDate() + i);
+                const dateKey = currentDate.toISOString().split('T')[0];
+                const dayName = days[i];
+                const log = data.dailyLogs[dateKey];
+                
+                // Use saved plan from log if available, otherwise use current plan as fallback
+                let plan;
+                if (log && log.plannedWorkout !== undefined) {
+                    // Use the saved snapshot
+                    plan = {
+                        workout: log.plannedWorkout,
+                        guitar: log.plannedGuitar,
+                        fasting: log.plannedFasting
+                    };
+                } else {
+                    // Fallback to current plan (for backward compatibility with old logs)
+                    plan = data.weeklyPlan[dayName];
+                }
+                
+                // Always count eating healthy and steps for each day
+                plannedSteps++; // Each day has step goal
+                plannedHealthy++; // Each day has healthy eating goal
+                
+                if (plan.workout !== 'Rest') {
+                    plannedWorkouts++;
+                    if (plan.workout === 'Strength Training') {
+                        plannedStrength++;
+                    }
+                }
+                if (plan.guitar) plannedGuitar++;
+                if (plan.fasting) plannedFasting++;
+            }
+            
+            const items = [
+                { label: 'Healthy Eating', current: healthy, goal: plannedHealthy, icon: '🥗' },
+                { label: 'Total Workouts', current: workouts, goal: plannedWorkouts, icon: '💪' },
+                { label: 'Strength Training', current: strength, goal: plannedStrength, icon: '🏋️' },
+                { label: 'Guitar Sessions', current: guitar, goal: plannedGuitar, icon: '🎸' },
+                { label: 'Fasting Days', current: fasting, goal: plannedFasting, icon: '⏱️' },
+                { label: 'Step Goals', current: steps, goal: plannedSteps, icon: '👟' }
+            ];
+
+            // Calculate overall completion percentage based on actual planned goals
+            let totalPlannedGoals = 0;
+            let totalCompleted = 0;
+            
+            // For each day up to and INCLUDING today, count total checkboxes available vs completed
+            for (let i = 0; i < daysToCount; i++) {
                 const currentDate = new Date(startOfWeek);
                 currentDate.setDate(startOfWeek.getDate() + i);
                 const dateKey = currentDate.toISOString().split('T')[0];
                 const dayName = days[i];
                 const log = data.dailyLogs[dateKey] || {};
                 
-                // Get the plan for this day
+                // Use saved plan from log if available, otherwise use current plan as fallback
                 let plan;
                 if (log.plannedWorkout !== undefined) {
                     plan = {
@@ -1600,44 +1658,27 @@
                     plan = data.weeklyPlan[dayName];
                 }
                 
-                // Count goals for this day
-                totalGoalsForWeek += 2; // Always have healthy eating and steps
-                if (log.ateHealthy) completedGoalsForWeek++;
-                if (log.stepsTarget) completedGoalsForWeek++;
+                // Always have eating healthy and steps
+                totalPlannedGoals += 2;
+                if (log.ateHealthy) totalCompleted++;
+                if (log.stepsTarget) totalCompleted++;
                 
                 if (plan.workout !== 'Rest') {
-                    totalGoalsForWeek++;
-                    plannedWorkouts++;
-                    if (log.workedOut) completedGoalsForWeek++;
-                    if (plan.workout === 'Strength Training') {
-                        plannedStrength++;
-                    }
+                    totalPlannedGoals++;
+                    if (log.workedOut) totalCompleted++;
                 }
-                
                 if (plan.guitar) {
-                    totalGoalsForWeek++;
-                    plannedGuitar++;
-                    if (log.guitarPractice) completedGoalsForWeek++;
+                    totalPlannedGoals++;
+                    if (log.guitarPractice) totalCompleted++;
                 }
-                
                 if (plan.fasting) {
-                    totalGoalsForWeek++;
-                    plannedFasting++;
-                    if (log.fasted) completedGoalsForWeek++;
+                    totalPlannedGoals++;
+                    if (log.fasted) totalCompleted++;
                 }
             }
             
-            const overallPercent = totalGoalsForWeek > 0 ? (completedGoalsForWeek / totalGoalsForWeek) * 100 : 0;
+            const overallPercent = totalPlannedGoals > 0 ? (totalCompleted / totalPlannedGoals) * 100 : 0;
             const overallStatus = overallPercent >= 100 ? '✅' : overallPercent > 0 ? '🔄' : '⏳';
-            
-            const items = [
-                { label: 'Healthy Eating', current: healthy, goal: plannedHealthy, icon: '🥗' },
-                { label: 'Total Workouts', current: workouts, goal: plannedWorkouts, icon: '💪' },
-                { label: 'Strength Training', current: strength, goal: plannedStrength, icon: '🏋️' },
-                { label: 'Guitar Sessions', current: guitar, goal: plannedGuitar, icon: '🎸' },
-                { label: 'Fasting Days', current: fasting, goal: plannedFasting, icon: '⏱️' },
-                { label: 'Step Goals', current: steps, goal: plannedSteps, icon: '👟' }
-            ];
 
             let html = '<div class="stat-grid">';
             
@@ -1649,7 +1690,7 @@
                     <div style="width: 100%; height: 8px; background: rgba(255,255,255,0.3); border-radius: 4px; margin-top: 10px; overflow: hidden;">
                         <div style="width: ${overallPercent}%; height: 100%; background: white; transition: width 0.3s;"></div>
                     </div>
-                    <div style="margin-top: 5px; font-size: 0.9em;">${overallStatus} ${completedGoalsForWeek}/${totalGoalsForWeek} goals</div>
+                    <div style="margin-top: 5px; font-size: 0.9em;">${overallStatus} ${totalCompleted}/${totalPlannedGoals} goals</div>
                 </div>
             `;
             
@@ -2279,7 +2320,12 @@
                 guitarPercent: weeklyData[weekKey].guitarPlanned > 0 ? (weeklyData[weekKey].guitar / weeklyData[weekKey].guitarPlanned) * 100 : 0,
                 fastingPercent: weeklyData[weekKey].fastingPlanned > 0 ? (weeklyData[weekKey].fasting / weeklyData[weekKey].fastingPlanned) * 100 : 0,
                 stepsPercent: weeklyData[weekKey].stepsPlanned > 0 ? (weeklyData[weekKey].steps / weeklyData[weekKey].stepsPlanned) * 100 : 0,
-                healthyPercent: weeklyData[weekKey].healthyPlanned > 0 ? (weeklyData[weekKey].healthy / weeklyData[weekKey].healthyPlanned) * 100 : 0
+                healthyPercent: weeklyData[weekKey].healthyPlanned > 0 ? (weeklyData[weekKey].healthy / weeklyData[weekKey].healthyPlanned) * 100 : 0,
+                workouts: weeklyData[weekKey].workouts,
+                guitar: weeklyData[weekKey].guitar,
+                fasting: weeklyData[weekKey].fasting,
+                steps: weeklyData[weekKey].steps,
+                healthy: weeklyData[weekKey].healthy
             })).sort((a, b) => a.weekKey.localeCompare(b.weekKey));
             
             return result;
@@ -2382,40 +2428,40 @@
                     labels: weeklyData.map(w => w.week),
                     datasets: [
                         {
-                            label: '🥗 Healthy Eating %',
-                            data: weeklyData.map(w => w.healthyPercent),
+                            label: '🥗 Healthy Eating',
+                            data: weeklyData.map(w => w.healthy),
                             borderColor: '#48bb78',
                             backgroundColor: 'rgba(72, 187, 120, 0.1)',
                             tension: 0.4,
                             fill: false
                         },
                         {
-                            label: '💪 Workouts %',
-                            data: weeklyData.map(w => w.workoutsPercent),
+                            label: '💪 Workouts',
+                            data: weeklyData.map(w => w.workouts),
                             borderColor: '#2c5282',
                             backgroundColor: 'rgba(44, 82, 130, 0.1)',
                             tension: 0.4,
                             fill: false
                         },
                         {
-                            label: '🎸 Guitar %',
-                            data: weeklyData.map(w => w.guitarPercent),
+                            label: '🎸 Guitar',
+                            data: weeklyData.map(w => w.guitar),
                             borderColor: '#ed8936',
                             backgroundColor: 'rgba(237, 137, 54, 0.1)',
                             tension: 0.4,
                             fill: false
                         },
                         {
-                            label: '⏱️ Fasting %',
-                            data: weeklyData.map(w => w.fastingPercent),
+                            label: '⏱️ Fasting',
+                            data: weeklyData.map(w => w.fasting),
                             borderColor: '#9f7aea',
                             backgroundColor: 'rgba(159, 122, 234, 0.1)',
                             tension: 0.4,
                             fill: false
                         },
                         {
-                            label: '👟 Steps %',
-                            data: weeklyData.map(w => w.stepsPercent),
+                            label: '👟 Steps',
+                            data: weeklyData.map(w => w.steps),
                             borderColor: '#38b2ac',
                             backgroundColor: 'rgba(56, 178, 172, 0.1)',
                             tension: 0.4,
@@ -2430,23 +2476,13 @@
                         legend: {
                             display: true,
                             position: 'bottom'
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return context.dataset.label + ': ' + context.parsed.y.toFixed(0) + '%';
-                                }
-                            }
                         }
                     },
                     scales: {
                         y: {
                             beginAtZero: true,
-                            max: 100,
                             ticks: {
-                                callback: function(value) {
-                                    return value + '%';
-                                }
+                                stepSize: 1
                             }
                         }
                     }
