@@ -2189,7 +2189,11 @@
 
         function calculateWeeklyCompletions() {
             const weeklyData = {};
+            const today = new Date();
+            const todayKey = getTodayKey();
+            const currentWeekKey = getWeekKey(today);
             
+            // First, go through all logged days to build up weekly data
             Object.keys(data.dailyLogs).sort().forEach(dateKey => {
                 const log = data.dailyLogs[dateKey];
                 const dayOfWeek = getDayOfWeek(dateKey);
@@ -2219,9 +2223,13 @@
                         steps: 0,
                         stepsPlanned: 0,
                         healthy: 0,
-                        healthyPlanned: 0
+                        healthyPlanned: 0,
+                        daysWithLogs: new Set()
                     };
                 }
+                
+                // Mark this day as having a log
+                weeklyData[weekKey].daysWithLogs.add(dayOfWeek);
                 
                 // Track planned vs completed
                 weeklyData[weekKey].healthyPlanned++;
@@ -2245,6 +2253,38 @@
                     if (log.fasted) weeklyData[weekKey].fasting++;
                 }
             });
+            
+            // For current week, need to add planned activities for days without logs
+            if (weeklyData[currentWeekKey]) {
+                const dayOfWeek = today.getDay();
+                const daysToCount = dayOfWeek === 0 ? 7 : dayOfWeek; // Sunday = 7 days, else = day number
+                const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+                
+                for (let i = 0; i < daysToCount; i++) {
+                    const dayName = days[i];
+                    
+                    // If we don't have a log for this day, add its planned activities
+                    if (!weeklyData[currentWeekKey].daysWithLogs.has(dayName)) {
+                        const plan = data.weeklyPlan[dayName];
+                        
+                        // Always have eating healthy and steps planned
+                        weeklyData[currentWeekKey].healthyPlanned++;
+                        weeklyData[currentWeekKey].stepsPlanned++;
+                        
+                        if (plan.workout !== 'Rest') {
+                            weeklyData[currentWeekKey].workoutsPlanned++;
+                        }
+                        
+                        if (plan.guitar) {
+                            weeklyData[currentWeekKey].guitarPlanned++;
+                        }
+                        
+                        if (plan.fasting) {
+                            weeklyData[currentWeekKey].fastingPlanned++;
+                        }
+                    }
+                }
+            }
             
             const result = Object.keys(weeklyData).map(weekKey => {
                 const data = weeklyData[weekKey];
@@ -2360,46 +2400,147 @@
                 activityChart.destroy();
             }
             
+            // Calculate percentages for each category for each week
+            const activityPercentages = weeklyData.map(week => {
+                // Find the week's data in the original calculation
+                const weekKey = week.weekKey;
+                const today = new Date();
+                const currentWeekKey = getWeekKey(today);
+                
+                // Get the raw data for this week
+                let healthyPlanned = 0, healthyCompleted = 0;
+                let workoutsPlanned = 0, workoutsCompleted = 0;
+                let guitarPlanned = 0, guitarCompleted = 0;
+                let fastingPlanned = 0, fastingCompleted = 0;
+                let stepsPlanned = 0, stepsCompleted = 0;
+                
+                // Count completed activities from logs
+                Object.keys(data.dailyLogs).sort().forEach(dateKey => {
+                    if (getWeekKey(dateKey) === weekKey) {
+                        const log = data.dailyLogs[dateKey];
+                        const dayOfWeek = getDayOfWeek(dateKey);
+                        
+                        let plan;
+                        if (log.plannedWorkout !== undefined) {
+                            plan = {
+                                workout: log.plannedWorkout,
+                                guitar: log.plannedGuitar,
+                                fasting: log.plannedFasting
+                            };
+                        } else {
+                            plan = data.weeklyPlan[dayOfWeek];
+                        }
+                        
+                        healthyPlanned++;
+                        stepsPlanned++;
+                        if (log.ateHealthy) healthyCompleted++;
+                        if (log.stepsTarget) stepsCompleted++;
+                        
+                        if (plan.workout !== 'Rest') {
+                            workoutsPlanned++;
+                            if (log.workedOut) workoutsCompleted++;
+                        }
+                        
+                        if (plan.guitar) {
+                            guitarPlanned++;
+                            if (log.guitarPractice) guitarCompleted++;
+                        }
+                        
+                        if (plan.fasting) {
+                            fastingPlanned++;
+                            if (log.fasted) fastingCompleted++;
+                        }
+                    }
+                });
+                
+                // For current week, add planned activities for days without logs
+                if (weekKey === currentWeekKey) {
+                    const dayOfWeek = today.getDay();
+                    const daysToCount = dayOfWeek === 0 ? 7 : dayOfWeek;
+                    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+                    const daysWithLogs = new Set();
+                    
+                    // Track which days have logs
+                    Object.keys(data.dailyLogs).forEach(dateKey => {
+                        if (getWeekKey(dateKey) === weekKey) {
+                            daysWithLogs.add(getDayOfWeek(dateKey));
+                        }
+                    });
+                    
+                    // Add planned for days without logs
+                    for (let i = 0; i < daysToCount; i++) {
+                        const dayName = days[i];
+                        if (!daysWithLogs.has(dayName)) {
+                            const plan = data.weeklyPlan[dayName];
+                            
+                            healthyPlanned++;
+                            stepsPlanned++;
+                            
+                            if (plan.workout !== 'Rest') {
+                                workoutsPlanned++;
+                            }
+                            
+                            if (plan.guitar) {
+                                guitarPlanned++;
+                            }
+                            
+                            if (plan.fasting) {
+                                fastingPlanned++;
+                            }
+                        }
+                    }
+                }
+                
+                return {
+                    week: week.week,
+                    healthyPercent: healthyPlanned > 0 ? (healthyCompleted / healthyPlanned) * 100 : 0,
+                    workoutsPercent: workoutsPlanned > 0 ? (workoutsCompleted / workoutsPlanned) * 100 : 0,
+                    guitarPercent: guitarPlanned > 0 ? (guitarCompleted / guitarPlanned) * 100 : 0,
+                    fastingPercent: fastingPlanned > 0 ? (fastingCompleted / fastingPlanned) * 100 : 0,
+                    stepsPercent: stepsPlanned > 0 ? (stepsCompleted / stepsPlanned) * 100 : 0
+                };
+            });
+            
             activityChart = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: weeklyData.map(w => w.week),
+                    labels: activityPercentages.map(w => w.week),
                     datasets: [
                         {
-                            label: '🥗 Healthy Eating',
-                            data: weeklyData.map(w => w.healthy),
+                            label: '🥗 Healthy Eating %',
+                            data: activityPercentages.map(w => w.healthyPercent),
                             borderColor: '#48bb78',
                             backgroundColor: 'rgba(72, 187, 120, 0.1)',
                             tension: 0.4,
                             fill: false
                         },
                         {
-                            label: '💪 Workouts',
-                            data: weeklyData.map(w => w.workouts),
+                            label: '💪 Workouts %',
+                            data: activityPercentages.map(w => w.workoutsPercent),
                             borderColor: '#2c5282',
                             backgroundColor: 'rgba(44, 82, 130, 0.1)',
                             tension: 0.4,
                             fill: false
                         },
                         {
-                            label: '🎸 Guitar',
-                            data: weeklyData.map(w => w.guitar),
+                            label: '🎸 Guitar %',
+                            data: activityPercentages.map(w => w.guitarPercent),
                             borderColor: '#ed8936',
                             backgroundColor: 'rgba(237, 137, 54, 0.1)',
                             tension: 0.4,
                             fill: false
                         },
                         {
-                            label: '⏱️ Fasting',
-                            data: weeklyData.map(w => w.fasting),
+                            label: '⏱️ Fasting %',
+                            data: activityPercentages.map(w => w.fastingPercent),
                             borderColor: '#9f7aea',
                             backgroundColor: 'rgba(159, 122, 234, 0.1)',
                             tension: 0.4,
                             fill: false
                         },
                         {
-                            label: '👟 Steps',
-                            data: weeklyData.map(w => w.steps),
+                            label: '👟 Steps %',
+                            data: activityPercentages.map(w => w.stepsPercent),
                             borderColor: '#38b2ac',
                             backgroundColor: 'rgba(56, 178, 172, 0.1)',
                             tension: 0.4,
@@ -2419,8 +2560,11 @@
                     scales: {
                         y: {
                             beginAtZero: true,
+                            max: 100,
                             ticks: {
-                                stepSize: 1
+                                callback: function(value) {
+                                    return value + '%';
+                                }
                             }
                         }
                     }
