@@ -2207,33 +2207,8 @@
                     plan = data.weeklyPlan[dayOfWeek];
                 }
                 
-                let totalGoals = 2; // Always have ateHealthy and stepsTarget
-                let completedGoals = 0;
-                
-                if (log.ateHealthy) completedGoals++;
-                if (log.stepsTarget) completedGoals++;
-                
-                if (plan.fasting) {
-                    totalGoals++;
-                    if (log.fasted) completedGoals++;
-                }
-                
-                if (plan.workout !== 'Rest') {
-                    totalGoals++;
-                    if (log.workedOut) completedGoals++;
-                }
-                
-                if (plan.guitar) {
-                    totalGoals++;
-                    if (log.guitarPractice) completedGoals++;
-                }
-                
-                const percentage = totalGoals > 0 ? (completedGoals / totalGoals) * 100 : 0;
-                
                 if (!weeklyData[weekKey]) {
                     weeklyData[weekKey] = { 
-                        total: 0, 
-                        count: 0, 
                         weekKey: weekKey,
                         workouts: 0,
                         workoutsPlanned: 0,
@@ -2247,8 +2222,6 @@
                         healthyPlanned: 0
                     };
                 }
-                weeklyData[weekKey].total += percentage;
-                weeklyData[weekKey].count++;
                 
                 // Track planned vs completed
                 weeklyData[weekKey].healthyPlanned++;
@@ -2273,21 +2246,25 @@
                 }
             });
             
-            const result = Object.keys(weeklyData).map(weekKey => ({
-                week: getWeekLabel(weekKey),
-                percentage: weeklyData[weekKey].total / weeklyData[weekKey].count,
-                weekKey: weekKey,
-                workoutsPercent: weeklyData[weekKey].workoutsPlanned > 0 ? (weeklyData[weekKey].workouts / weeklyData[weekKey].workoutsPlanned) * 100 : 0,
-                guitarPercent: weeklyData[weekKey].guitarPlanned > 0 ? (weeklyData[weekKey].guitar / weeklyData[weekKey].guitarPlanned) * 100 : 0,
-                fastingPercent: weeklyData[weekKey].fastingPlanned > 0 ? (weeklyData[weekKey].fasting / weeklyData[weekKey].fastingPlanned) * 100 : 0,
-                stepsPercent: weeklyData[weekKey].stepsPlanned > 0 ? (weeklyData[weekKey].steps / weeklyData[weekKey].stepsPlanned) * 100 : 0,
-                healthyPercent: weeklyData[weekKey].healthyPlanned > 0 ? (weeklyData[weekKey].healthy / weeklyData[weekKey].healthyPlanned) * 100 : 0,
-                workouts: weeklyData[weekKey].workouts,
-                guitar: weeklyData[weekKey].guitar,
-                fasting: weeklyData[weekKey].fasting,
-                steps: weeklyData[weekKey].steps,
-                healthy: weeklyData[weekKey].healthy
-            })).sort((a, b) => a.weekKey.localeCompare(b.weekKey));
+            const result = Object.keys(weeklyData).map(weekKey => {
+                const data = weeklyData[weekKey];
+                
+                // Calculate overall percentage - simple sum just like weekly progress
+                const totalPlanned = data.healthyPlanned + data.workoutsPlanned + data.guitarPlanned + data.fastingPlanned + data.stepsPlanned;
+                const totalCompleted = data.healthy + data.workouts + data.guitar + data.fasting + data.steps;
+                const overallPercentage = totalPlanned > 0 ? (totalCompleted / totalPlanned) * 100 : 0;
+                
+                return {
+                    week: getWeekLabel(weekKey),
+                    percentage: overallPercentage,
+                    weekKey: weekKey,
+                    workouts: data.workouts,
+                    guitar: data.guitar,
+                    fasting: data.fasting,
+                    steps: data.steps,
+                    healthy: data.healthy
+                };
+            }).sort((a, b) => a.weekKey.localeCompare(b.weekKey));
             
             return result;
         }
